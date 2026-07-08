@@ -1,0 +1,21 @@
+# node / playwright
+node_modules/
+pw-browsers/
+
+# собранные данные и отчёты (личные суммы)
+data/
+data_guns/
+reports/
+reports_guns/
+*.log
+
+# черновики
+_dev/
+
+# личная финансовая аналитика портфеля CS2 — не для публикации
+merge_450k.py
+analyze_portfolio.py
+cs2_invest_plan.html
+
+# Claude Code local config
+.claude/
