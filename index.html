@@ -95,6 +95,11 @@
   .chk{display:inline-flex;align-items:center;gap:6px;color:var(--mut);font-size:12.5px;cursor:pointer;user-select:none;white-space:nowrap}
   .chk input{accent-color:var(--acc);cursor:pointer}
   #clrSeen:disabled{opacity:.45;cursor:default}
+  .cp{background:transparent;border:0;color:var(--mut);cursor:pointer;padding:2px;margin-left:7px;
+    vertical-align:middle;border-radius:5px;line-height:0;opacity:.5;transition:.12s}
+  .cp:hover{opacity:1;color:var(--acc2);background:var(--bg3)}
+  .cp:active{transform:scale(.9)}
+  .cp svg{display:block;fill:none;stroke:currentColor;stroke-width:2}
   td.num{text-align:right;font-variant-numeric:tabular-nums}
   td.cnt{font-weight:700;color:var(--gold)}
   .share{color:var(--mut);font-size:11px}
@@ -243,6 +248,7 @@ function parseMeta(name,cat){
   let wear="",wc="";
   const wm=name.match(/\(([^()]+)\)\s*$/);
   if(wm&&WEAR[wm[1]]){ wear=wm[1]; wc=WEAR[wm[1]]; }
+  const display = (wear&&wm) ? name.slice(0, wm.index).trimEnd() : name; // название без качества
   let core=name.replace(/^★\s*/,"").replace(/^StatTrak™\s*/,"").replace(/^Souvenir\s*/,"");
   let weapon="",paint="";
   if(core.indexOf(" | ")!==-1){
@@ -262,7 +268,7 @@ function parseMeta(name,cat){
   const parts=name.split("|").map(s=>s.trim());
   const last=parts[parts.length-1];
   if(parts.length>1&&/\b20\d{2}\b/.test(last)&&last.length<=28) event=last;
-  return {star,st,souvenir,wear,wc,weapon,paint,wclass,finish,event,vanilla};
+  return {star,st,souvenir,wear,wc,weapon,paint,wclass,finish,event,vanilla,display};
 }
 function ingest(cats, rows){
   CATS = cats.slice();
@@ -391,9 +397,10 @@ function renderTable(){
       (m.wclass?`<span class="tag wc">${esc(m.wclass)}</span>`:'')+
       (m.event?`<span class="tag ev" title="Турнир">${esc(m.event)}</span>`:'');
     const seen=VISITED.has(r.name);
+    const cpIcon=`<button class="cp" data-copy="${esc(m.display)}" title="Копировать название (без качества)" aria-label="Копировать название"><svg viewBox="0 0 24 24" width="13" height="13"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button>`;
     return `<tr class="${seen?'seen':''}">
       <td class="rank num">${rank}</td>
-      <td class="name">${esc(r.name)}${badges}</td>
+      <td class="name">${esc(m.display)}${cpIcon}${badges}</td>
       <td class="num cnt">${fmt(r.count)}</td>
       <td class="num share"><span class="share">${sh}%</span></td>
       <td>${ctags}</td>
@@ -415,6 +422,19 @@ function renderPager(pages){
 function goto(p){ page=p; renderTable(); window.scrollTo({top:document.querySelector('.toolbar').offsetTop-20,behavior:'smooth'}); }
 function clearFilters(){ $("search").value=""; $("catSel").value=""; $("wearSel").value="";
   $("specialSel").value=""; $("eventSel").value=""; $("hideSeen").checked=false; activeCat=""; onFilter(); }
+
+/* ==== копирование названия (без качества) ==== */
+function copyText(t){
+  const ok=()=>toast("Скопировано: "+t);
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(ok).catch(()=>fallbackCopy(t,ok));
+  } else fallbackCopy(t,ok);
+}
+function fallbackCopy(t,ok){
+  try{ const ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); ta.remove(); ok(); }
+  catch(e){ toast("Не удалось скопировать",true); }
+}
 
 /* ==== отметки «просмотрено» (SteamDT) ==== */
 function saveVisited(){ try{ sessionStorage.setItem(VKEY, JSON.stringify([...VISITED])); }catch(e){} }
@@ -488,7 +508,10 @@ function rebuild(){ renderKpis(); fillCatSelect(); fillEventSelect(); renderCats
 function boot(){
   setStatus(`Снапшот: <b>${SNAP_DATE}</b><br>позиций: <b>${fmt(ROWS.length)}</b> · нажмите «Обновить»`);
   // отметить просмотренные по клику SteamDT (делегирование — переживает перерисовку)
-  $("tbody").addEventListener("click", e=>{ const a=e.target.closest("a.dt"); if(a && a.dataset.nm) markVisited(a.dataset.nm); });
+  $("tbody").addEventListener("click", e=>{
+    const cp=e.target.closest(".cp"); if(cp){ e.preventDefault(); copyText(cp.dataset.copy); return; }
+    const a=e.target.closest("a.dt"); if(a && a.dataset.nm) markVisited(a.dataset.nm);
+  });
   $("topBars").addEventListener("click", e=>{ const bar=e.target.closest(".bar"); if(bar && bar.dataset.nm){ const nm=bar.dataset.nm; markVisited(nm); window.open(dtUrl(nm),"_blank","noopener"); } });
   rebuild();
   afterVisited(); // выставить счётчик на кнопке
