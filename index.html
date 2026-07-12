@@ -220,8 +220,8 @@ let catMode = "count";
 let sortKey = "count", sortDir = -1;
 let page = 0; const PER = 100;
 let activeCat = "";
-const VKEY = "cs2dt_visited_v1"; // отметки «просмотрено» переживают обновление и перезагрузку
-let VISITED = (()=>{ try{ return new Set(JSON.parse(localStorage.getItem(VKEY)||"[]")); }catch(e){ return new Set(); } })();
+const VKEY = "cs2dt_visited_v1"; // отметки «просмотрено» живут только в текущей сессии (закрытие браузера = сброс)
+let VISITED = (()=>{ try{ return new Set(JSON.parse(sessionStorage.getItem(VKEY)||"[]")); }catch(e){ return new Set(); } })();
 
 const fmt = n => n.toLocaleString("ru-RU");
 const $ = id => document.getElementById(id);
@@ -417,7 +417,7 @@ function clearFilters(){ $("search").value=""; $("catSel").value=""; $("wearSel"
   $("specialSel").value=""; $("eventSel").value=""; $("hideSeen").checked=false; activeCat=""; onFilter(); }
 
 /* ==== отметки «просмотрено» (SteamDT) ==== */
-function saveVisited(){ try{ localStorage.setItem(VKEY, JSON.stringify([...VISITED])); }catch(e){} }
+function saveVisited(){ try{ sessionStorage.setItem(VKEY, JSON.stringify([...VISITED])); }catch(e){} }
 function markVisited(name){ if(name && !VISITED.has(name)){ VISITED.add(name); saveVisited(); afterVisited(); } }
 function clearVisited(){ if(!VISITED.size) return; VISITED.clear(); saveVisited(); afterVisited(); }
 function afterVisited(){
