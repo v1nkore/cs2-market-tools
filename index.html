@@ -141,7 +141,7 @@
 
   <div class="panel">
     <div class="toolbar">
-      <input type="text" id="search" placeholder="🔎 Поиск по названию…" oninput="onFilter()">
+      <input type="text" id="search" placeholder="🔎 Поиск по словам: напр. stockholm holo gambit…" oninput="onFilter()">
       <select id="catSel" onchange="onFilter()"></select>
       <button class="clr" onclick="clearFilters()">Сбросить</button>
       <span class="count-note" id="countNote"></span>
@@ -252,11 +252,17 @@ function renderTop(){
 
 /* ==== фильтр/сортировка/таблица ==== */
 function onFilter(){
-  const q = $("search").value.trim().toLowerCase();
+  const raw = $("search").value.trim().toLowerCase();
+  const tokens = raw.split(/\s+/).filter(Boolean); // умный поиск: каждое слово должно найтись
   const cat = $("catSel").value;
   activeCat = cat;
-  filtered = ROWS.filter(r =>
-    (!cat || r.cat===cat) && (!q || r.name.toLowerCase().includes(q)));
+  filtered = ROWS.filter(r => {
+    if(cat && r.cat!==cat) return false;
+    if(!tokens.length) return true;
+    const hay = (r.name + " " + r.cat).toLowerCase();
+    for(const t of tokens){ if(hay.indexOf(t)===-1) return false; }
+    return true;
+  });
   sortRows(); page=0; renderTable(); renderTop(); renderCats();
 }
 function sortRows(){
