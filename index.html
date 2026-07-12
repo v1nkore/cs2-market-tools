@@ -88,6 +88,13 @@
   .bdg.fin{background:#2a1533;color:#d08bff;border-color:#432155}
   .tag.wc{color:#8fb7ff;border-color:#25324a;background:#131c2b}
   .tag.ev{color:#c9a24b;border-color:#3a3016;background:#221c0f}
+  tr.seen td{background:rgba(63,185,80,.06)}
+  tr.seen td.name{color:var(--mut)}
+  a.dt.v{color:var(--good);border-color:#1e3a24;background:#0e1f13}
+  a.dt.v::before{content:"✓";font-weight:800}
+  .chk{display:inline-flex;align-items:center;gap:6px;color:var(--mut);font-size:12.5px;cursor:pointer;user-select:none;white-space:nowrap}
+  .chk input{accent-color:var(--acc);cursor:pointer}
+  #clrSeen:disabled{opacity:.45;cursor:default}
   td.num{text-align:right;font-variant-numeric:tabular-nums}
   td.cnt{font-weight:700;color:var(--gold)}
   .share{color:var(--mut);font-size:11px}
@@ -169,7 +176,9 @@
         <option value="foil">Стикеры Foil/Gold</option>
       </select>
       <select id="eventSel" onchange="onFilter()"></select>
+      <label class="chk" title="Скрыть предметы, у которых вы уже открывали SteamDT"><input type="checkbox" id="hideSeen" onchange="onFilter()"> скрыть просмотренные</label>
       <button class="clr" onclick="clearFilters()">Сбросить</button>
+      <button class="clr" id="clrSeen" onclick="clearVisited()">Сбросить отметки</button>
       <span class="count-note" id="countNote"></span>
     </div>
     <div style="overflow-x:auto">
@@ -211,6 +220,8 @@ let catMode = "count";
 let sortKey = "count", sortDir = -1;
 let page = 0; const PER = 100;
 let activeCat = "";
+const VKEY = "cs2dt_visited_v1"; // отметки «просмотрено» переживают обновление и перезагрузку
+let VISITED = (()=>{ try{ return new Set(JSON.parse(localStorage.getItem(VKEY)||"[]")); }catch(e){ return new Set(); } })();
 
 const fmt = n => n.toLocaleString("ru-RU");
 const $ = id => document.getElementById(id);
@@ -307,7 +318,7 @@ function renderTop(){
   const top = scope.slice().sort((a,b)=>b.count-a.count).slice(0,15);
   const max = top.length?top[0].count:1;
   $("topBars").innerHTML = top.map((r,i)=>`
-    <div class="bar" onclick="location.href='${dtUrl(r.name)}'" title="Открыть на SteamDT">
+    <div class="bar" data-nm="${esc(r.name)}" title="Открыть на SteamDT">
       <div class="b-name">${i+1}. ${esc(r.name)}</div>
       <div class="b-track"><div class="b-fill" style="width:${(r.count/max*100).toFixed(2)}%"></div></div>
       <div class="b-val">${fmt(r.count)}</div>
@@ -322,9 +333,11 @@ function onFilter(){
   const wear = $("wearSel").value;
   const sp = $("specialSel").value;
   const ev = $("eventSel").value;
+  const hideSeen = $("hideSeen").checked;
   activeCat = cat;
   filtered = ROWS.filter(r => {
     if(cat && r.cat!==cat) return false;
+    if(hideSeen && VISITED.has(r.name)) return false;
     const m=r.m;
     if(wear && m.wear!==wear) return false;
     if(ev && m.event!==ev) return false;
@@ -377,13 +390,14 @@ function renderTable(){
     const ctags = `<span class="tag">${esc(r.cat)}</span>`+
       (m.wclass?`<span class="tag wc">${esc(m.wclass)}</span>`:'')+
       (m.event?`<span class="tag ev" title="Турнир">${esc(m.event)}</span>`:'');
-    return `<tr>
+    const seen=VISITED.has(r.name);
+    return `<tr class="${seen?'seen':''}">
       <td class="rank num">${rank}</td>
       <td class="name">${esc(r.name)}${badges}</td>
       <td class="num cnt">${fmt(r.count)}</td>
       <td class="num share"><span class="share">${sh}%</span></td>
       <td>${ctags}</td>
-      <td><a class="dt" href="${dtUrl(r.name)}" target="_blank" rel="noopener">SteamDT</a></td>
+      <td><a class="dt${seen?' v':''}" data-nm="${esc(r.name)}" href="${dtUrl(r.name)}" target="_blank" rel="noopener">SteamDT</a></td>
     </tr>`;
   }).join("");
   renderPager(pages);
@@ -400,7 +414,16 @@ function renderPager(pages){
 }
 function goto(p){ page=p; renderTable(); window.scrollTo({top:document.querySelector('.toolbar').offsetTop-20,behavior:'smooth'}); }
 function clearFilters(){ $("search").value=""; $("catSel").value=""; $("wearSel").value="";
-  $("specialSel").value=""; $("eventSel").value=""; activeCat=""; onFilter(); }
+  $("specialSel").value=""; $("eventSel").value=""; $("hideSeen").checked=false; activeCat=""; onFilter(); }
+
+/* ==== отметки «просмотрено» (SteamDT) ==== */
+function saveVisited(){ try{ localStorage.setItem(VKEY, JSON.stringify([...VISITED])); }catch(e){} }
+function markVisited(name){ if(name && !VISITED.has(name)){ VISITED.add(name); saveVisited(); afterVisited(); } }
+function clearVisited(){ if(!VISITED.size) return; VISITED.clear(); saveVisited(); afterVisited(); }
+function afterVisited(){
+  const b=$("clrSeen"); if(b){ b.textContent="Сбросить отметки ("+fmt(VISITED.size)+")"; b.disabled=!VISITED.size; }
+  if($("hideSeen") && $("hideSeen").checked) onFilter(); else renderTable();
+}
 function fillEventSelect(){
   const m={};
   for(const r of ROWS){ if(r.m.event){ m[r.m.event]=(m[r.m.event]||0)+1; } }
@@ -464,7 +487,11 @@ function refresh(){
 function rebuild(){ renderKpis(); fillCatSelect(); fillEventSelect(); renderCats(); onFilter(); }
 function boot(){
   setStatus(`Снапшот: <b>${SNAP_DATE}</b><br>позиций: <b>${fmt(ROWS.length)}</b> · нажмите «Обновить»`);
+  // отметить просмотренные по клику SteamDT (делегирование — переживает перерисовку)
+  $("tbody").addEventListener("click", e=>{ const a=e.target.closest("a.dt"); if(a && a.dataset.nm) markVisited(a.dataset.nm); });
+  $("topBars").addEventListener("click", e=>{ const bar=e.target.closest(".bar"); if(bar && bar.dataset.nm){ const nm=bar.dataset.nm; markVisited(nm); window.open(dtUrl(nm),"_blank","noopener"); } });
   rebuild();
+  afterVisited(); // выставить счётчик на кнопке
 }
 boot();
 </script>
