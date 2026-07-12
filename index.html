@@ -80,6 +80,14 @@
   td.name{font-weight:600}
   .tag{display:inline-block;font-size:10.5px;color:var(--mut);background:var(--bg3);border:1px solid var(--line);
     padding:1px 7px;border-radius:20px;margin-left:8px;font-weight:500;vertical-align:middle}
+  .bdg{display:inline-block;font-size:9.5px;font-weight:800;line-height:1;padding:3px 5px;border-radius:5px;
+    margin-left:6px;vertical-align:middle;letter-spacing:.4px;border:1px solid transparent}
+  .bdg.st{background:#3a2410;color:#ff9d3c;border-color:#5a3a1a}
+  .bdg.sv{background:#0f2b2a;color:#2fd4c9;border-color:#1c4442}
+  .bdg.wear{background:var(--bg3);color:var(--mut);border-color:var(--line)}
+  .bdg.fin{background:#2a1533;color:#d08bff;border-color:#432155}
+  .tag.wc{color:#8fb7ff;border-color:#25324a;background:#131c2b}
+  .tag.ev{color:#c9a24b;border-color:#3a3016;background:#221c0f}
   td.num{text-align:right;font-variant-numeric:tabular-nums}
   td.cnt{font-weight:700;color:var(--gold)}
   .share{color:var(--mut);font-size:11px}
@@ -143,6 +151,24 @@
     <div class="toolbar">
       <input type="text" id="search" placeholder="🔎 Поиск по словам: напр. stockholm holo gambit…" oninput="onFilter()">
       <select id="catSel" onchange="onFilter()"></select>
+      <select id="wearSel" onchange="onFilter()">
+        <option value="">Любой износ</option>
+        <option value="Factory New">Factory New (FN)</option>
+        <option value="Minimal Wear">Minimal Wear (MW)</option>
+        <option value="Field-Tested">Field-Tested (FT)</option>
+        <option value="Well-Worn">Well-Worn (WW)</option>
+        <option value="Battle-Scarred">Battle-Scarred (BS)</option>
+      </select>
+      <select id="specialSel" onchange="onFilter()">
+        <option value="">Любой тип</option>
+        <option value="st">StatTrak™</option>
+        <option value="sv">Souvenir</option>
+        <option value="star">★ Нож / перчатки</option>
+        <option value="vanilla">★ Ванильные (без окраса)</option>
+        <option value="holo">Стикеры Holo</option>
+        <option value="foil">Стикеры Foil/Gold</option>
+      </select>
+      <select id="eventSel" onchange="onFilter()"></select>
       <button class="clr" onclick="clearFilters()">Сбросить</button>
       <span class="count-note" id="countNote"></span>
     </div>
@@ -189,9 +215,47 @@ let activeCat = "";
 const fmt = n => n.toLocaleString("ru-RU");
 const $ = id => document.getElementById(id);
 
+/* ==== метаданные из названия (без внешних запросов) ==== */
+const WEAR={"Factory New":"FN","Minimal Wear":"MW","Field-Tested":"FT","Well-Worn":"WW","Battle-Scarred":"BS"};
+const WCLASS=(()=>{const m={};const add=(cls,arr)=>arr.forEach(w=>m[w]=cls);
+  add("Пистолет",["Glock-18","USP-S","P2000","P250","Five-SeveN","Tec-9","CZ75-Auto","Dual Berettas","Desert Eagle","R8 Revolver"]);
+  add("Винтовка",["AK-47","M4A4","M4A1-S","Galil AR","FAMAS","AUG","SG 553"]);
+  add("Снайперская",["AWP","SSG 08","SCAR-20","G3SG1"]);
+  add("ПП",["MAC-10","MP9","MP7","MP5-SD","UMP-45","P90","PP-Bizon"]);
+  add("Дробовик",["Nova","XM1014","Sawed-Off","MAG-7"]);
+  add("Пулемёт",["M249","Negev"]);
+  return m;})();
+function parseMeta(name,cat){
+  const star=name.startsWith("★");
+  const st=name.indexOf("StatTrak™")!==-1;
+  const souvenir=name.indexOf("Souvenir ")===0;
+  let wear="",wc="";
+  const wm=name.match(/\(([^()]+)\)\s*$/);
+  if(wm&&WEAR[wm[1]]){ wear=wm[1]; wc=WEAR[wm[1]]; }
+  let core=name.replace(/^★\s*/,"").replace(/^StatTrak™\s*/,"").replace(/^Souvenir\s*/,"");
+  let weapon="",paint="";
+  if(core.indexOf(" | ")!==-1){
+    const p=core.split(" | ");
+    weapon=p[0].trim();
+    paint=p.slice(1).join(" | ").replace(/\s*\([^()]*\)\s*$/,"").trim();
+  } else { weapon=core.replace(/\s*\([^()]*\)\s*$/,"").trim(); }
+  let wclass=WCLASS[weapon]||"";
+  if(!wclass&&star) wclass=/(Gloves|Hand Wraps)/.test(name)?"Перчатки":"Нож";
+  const vanilla=star&&core.indexOf(" | ")===-1; // ванильный нож/перчатки без окраса
+  let finish="";
+  if(/Sticker|Patch/i.test(cat)){
+    const fm=name.match(/\((Holo|Foil|Gold|Glitter|Lenticular|Champion)\)/i);
+    if(fm) finish=fm[1];
+  }
+  let event="";
+  const parts=name.split("|").map(s=>s.trim());
+  const last=parts[parts.length-1];
+  if(parts.length>1&&/\b20\d{2}\b/.test(last)&&last.length<=28) event=last;
+  return {star,st,souvenir,wear,wc,weapon,paint,wclass,finish,event,vanilla};
+}
 function ingest(cats, rows){
   CATS = cats.slice();
-  ROWS = rows.map(r => ({name:r[0], count:r[1], cat:cats[r[2]] || "—"}));
+  ROWS = rows.map(r => { const o={name:r[0], count:r[1], cat:cats[r[2]] || "—"}; o.m=parseMeta(o.name,o.cat); return o; });
 }
 ingest(EMBEDDED.cats, EMBEDDED.rows);
 
@@ -255,12 +319,25 @@ function onFilter(){
   const raw = $("search").value.trim().toLowerCase();
   const tokens = raw.split(/\s+/).filter(Boolean); // умный поиск: каждое слово должно найтись
   const cat = $("catSel").value;
+  const wear = $("wearSel").value;
+  const sp = $("specialSel").value;
+  const ev = $("eventSel").value;
   activeCat = cat;
   filtered = ROWS.filter(r => {
     if(cat && r.cat!==cat) return false;
-    if(!tokens.length) return true;
-    const hay = (r.name + " " + r.cat).toLowerCase();
-    for(const t of tokens){ if(hay.indexOf(t)===-1) return false; }
+    const m=r.m;
+    if(wear && m.wear!==wear) return false;
+    if(ev && m.event!==ev) return false;
+    if(sp==="st" && !m.st) return false;
+    if(sp==="sv" && !m.souvenir) return false;
+    if(sp==="star" && !m.star) return false;
+    if(sp==="vanilla" && !m.vanilla) return false;
+    if(sp==="holo" && !/holo/i.test(m.finish)) return false;
+    if(sp==="foil" && !/foil|gold/i.test(m.finish)) return false;
+    if(tokens.length){
+      const hay = (r.name + " " + r.cat).toLowerCase();
+      for(const t of tokens){ if(hay.indexOf(t)===-1) return false; }
+    }
     return true;
   });
   sortRows(); page=0; renderTable(); renderTop(); renderCats();
@@ -291,12 +368,21 @@ function renderTable(){
     const rank = page*PER+i+1;
     const share = (r.count/totalCntAll*100);
     const sh = share>=0.1?share.toFixed(2):share.toFixed(3);
+    const m=r.m;
+    const badges =
+      (m.st?'<span class="bdg st" title="StatTrak™">ST</span>':'')+
+      (m.souvenir?'<span class="bdg sv" title="Souvenir">SV</span>':'')+
+      (m.finish?`<span class="bdg fin" title="Финиш стикера">${esc(m.finish)}</span>`:'')+
+      (m.wc?`<span class="bdg wear" title="${esc(m.wear)}">${m.wc}</span>`:'');
+    const ctags = `<span class="tag">${esc(r.cat)}</span>`+
+      (m.wclass?`<span class="tag wc">${esc(m.wclass)}</span>`:'')+
+      (m.event?`<span class="tag ev" title="Турнир">${esc(m.event)}</span>`:'');
     return `<tr>
       <td class="rank num">${rank}</td>
-      <td class="name">${esc(r.name)}</td>
+      <td class="name">${esc(r.name)}${badges}</td>
       <td class="num cnt">${fmt(r.count)}</td>
       <td class="num share"><span class="share">${sh}%</span></td>
-      <td><span class="tag">${esc(r.cat)}</span></td>
+      <td>${ctags}</td>
       <td><a class="dt" href="${dtUrl(r.name)}" target="_blank" rel="noopener">SteamDT</a></td>
     </tr>`;
   }).join("");
@@ -313,7 +399,17 @@ function renderPager(pages){
   $("pager").innerHTML = `<span class="pinfo">стр. ${page+1} из ${pages}</span>` + h;
 }
 function goto(p){ page=p; renderTable(); window.scrollTo({top:document.querySelector('.toolbar').offsetTop-20,behavior:'smooth'}); }
-function clearFilters(){ $("search").value=""; $("catSel").value=""; activeCat=""; onFilter(); }
+function clearFilters(){ $("search").value=""; $("catSel").value=""; $("wearSel").value="";
+  $("specialSel").value=""; $("eventSel").value=""; activeCat=""; onFilter(); }
+function fillEventSelect(){
+  const m={};
+  for(const r of ROWS){ if(r.m.event){ m[r.m.event]=(m[r.m.event]||0)+1; } }
+  const evs=Object.keys(m).sort((a,b)=>m[b]-m[a]);
+  const cur=$("eventSel").value;
+  $("eventSel").innerHTML = `<option value="">Все турниры</option>`+
+    evs.map(e=>`<option value="${esc(e)}">${esc(e)} (${fmt(m[e])})</option>`).join("");
+  $("eventSel").value=cur;
+}
 
 /* ==== селект категорий ==== */
 function fillCatSelect(){
@@ -365,7 +461,7 @@ function refresh(){
 }
 
 /* ==== полная перерисовка ==== */
-function rebuild(){ renderKpis(); fillCatSelect(); renderCats(); onFilter(); }
+function rebuild(){ renderKpis(); fillCatSelect(); fillEventSelect(); renderCats(); onFilter(); }
 function boot(){
   setStatus(`Снапшот: <b>${SNAP_DATE}</b><br>позиций: <b>${fmt(ROWS.length)}</b> · нажмите «Обновить»`);
   rebuild();
