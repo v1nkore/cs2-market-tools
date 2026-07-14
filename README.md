@@ -115,3 +115,17 @@ node report.mjs                      # пересобрать HTML из history.
   set PLAYWRIGHT_BROWSERS_PATH=%cd%\pw-browsers
   npx playwright install chromium
   ```
+
+### Установка на новой машине
+```
+git clone https://github.com/v1nkore/steamdt-cs2-tracker
+cd steamdt-cs2-tracker
+npm ci
+set PLAYWRIGHT_BROWSERS_PATH=%cd%\pw-browsers
+npx playwright install chromium
+```
+Дальше — любой `.bat` или `node scrape.mjs`. Папки `data/`, `reports/` создаются сами.
+
+**Важно про историю:** собранные данные (`data/`, `data_guns/`, отчёты) в git
+не хранятся — это личные суммы. Между машинами история едет только через
+синхронизацию папки (OneDrive); свежий клон с GitHub начинает историю с нуля.
