@@ -44,11 +44,32 @@ async function scrapeLisSkins(page) {
   let lastPage = 1;
   while (pageNum <= lastPage) {
     const url = LIST_URL + (LIST_URL.includes('?') ? '&' : '?') + 'page=' + pageNum;
-    await page.goto(pageNum === 1 ? LIST_URL : url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.waitForFunction(() => {
-      const v = window.__NUXT__ && window.__NUXT__.state && window.__NUXT__.state['$svue-query'];
-      return v && v.queries && v.queries.some(q => q.queryKey && q.queryKey[0] === 'skins' && q.state && q.state.data && q.state.data.data && q.state.data.data.length);
-    }, { timeout: 45000 });
+    let loaded = false;
+    for (let attempt = 1; attempt <= 3 && !loaded; attempt++) {
+      try {
+        await page.goto(pageNum === 1 ? LIST_URL : url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        // ВАЖНО: options — третьим аргументом (второй — это arg для функции)
+        await page.waitForFunction(() => {
+          const v = window.__NUXT__ && window.__NUXT__.state && window.__NUXT__.state['$svue-query'];
+          return v && v.queries && v.queries.some(q => q.queryKey && q.queryKey[0] === 'skins' && q.state && q.state.data && q.state.data.data && q.state.data.data.length);
+        }, undefined, { timeout: 45000 });
+        loaded = true;
+      } catch (e) {
+        if (attempt === 3) {
+          const info = await page.evaluate(() => ({
+            title: document.title,
+            text: ((document.body && document.body.innerText) || '').replace(/\s+/g, ' ').slice(0, 200),
+          })).catch(() => null);
+          throw new Error(
+            `lis-skins не отдал данные за 45с (страница ${pageNum}, 3 попытки). ` +
+            `Возможно, антибот проверяет ваш IP или сеть медленная — попробуйте нажать кнопку ещё раз через минуту. ` +
+            `Содержимое страницы: ${JSON.stringify(info)}`
+          );
+        }
+        progress({ stage: 'lis-skins', msg: `страница ${pageNum} не загрузилась, повтор ${attempt + 1}/3...` });
+        await page.waitForTimeout(5000 * attempt);
+      }
+    }
     const chunk = await page.evaluate(() => {
       const v = window.__NUXT__.state['$svue-query'];
       const q = v.queries.find(q => q.queryKey[0] === 'skins');
@@ -68,6 +89,12 @@ async function scrapeLisSkins(page) {
     });
     usdRate = chunk.usdRate || usdRate;
     lastPage = (chunk.meta && chunk.meta.last_page) || 1;
+    if (lastPage > 25) {
+      throw new Error(
+        `Сайт вернул ${chunk.meta && chunk.meta.total} позиций (${lastPage} страниц) — похоже, это весь каталог, а не список избранного. ` +
+        `Проверьте ссылку: она должна содержать корректный user_list_id.`
+      );
+    }
     rows.push(...chunk.items);
     progress({ stage: 'lis-skins', msg: `страница ${pageNum}/${lastPage}`, done: rows.length });
     pageNum++;
