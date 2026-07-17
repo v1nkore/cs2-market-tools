@@ -1,0 +1,13 @@
+{
+  "name": "lisskins-steamdt-compare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "rebuild": "node scrape.mjs"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "playwright": "1.61.1"
+  }
+}

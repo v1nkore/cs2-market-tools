@@ -179,23 +179,56 @@ function applyFilterSort() {
 
 document.getElementById('search').addEventListener('input', applyFilterSort);
 document.getElementById('sort-select').addEventListener('change', applyFilterSort);
-document.getElementById('refresh-btn').addEventListener('click', () => {
+const SERVER_MODE = location.protocol.startsWith('http');
+const btn = document.getElementById('refresh-btn');
+const statusEl = document.getElementById('copy-status');
+if (SERVER_MODE) btn.textContent = 'Пересобрать по ссылке';
+
+function showStatus(text) { statusEl.style.display = 'block'; statusEl.textContent = text; }
+
+async function pollUntilDone() {
+  while (true) {
+    await new Promise(r => setTimeout(r, 2000));
+    let s;
+    try { s = await (await fetch('/api/status')).json(); } catch { showStatus('сервер недоступен, повторяю...'); continue; }
+    if (s.error) { showStatus('Ошибка: ' + s.error); btn.disabled = false; return; }
+    if (!s.running && s.stage === 'done') {
+      showStatus('Готово, файлы перезаписаны' + (s.gitResult ? ' · git: ' + s.gitResult : '') + '. Обновляю страницу...');
+      setTimeout(() => location.reload(), 1500);
+      return;
+    }
+    const pct = s.total ? ` ${s.done}/${s.total}` : (s.done ? ` ${s.done}` : '');
+    showStatus(`Пересборка: ${s.stage || '...'}${pct} ${s.msg || ''}`);
+  }
+}
+
+btn.addEventListener('click', async () => {
   const url = document.getElementById('list-url').value.trim() || 'https://lis-skins.com/ru/market/cs2/?user_list_id=01kvbgbzhn0acjzykwfagmc96y';
-  const prompt = 'Обнови сравнение цен CS2 по ссылке: ' + url + '\n\nТезисно:\n- список избранного lis-skins по этой ссылке — UI сайта его не фильтрует (баг), читать skin_ids напрямую из клиентского кэша страницы (vue-query, ключ userLists)\n- по каждому скину: название, доступное количество, цена в $ и ₽ (курс — с lis-skins)\n- на steamdt.com (/en/mkt) по каждому скину забрать цены Steam, BUFF, YouPin — API отдаёт их в юанях (CNY), перевести в ₽ по курсу из localStorage.commonDictionary.rates того же сайта\n- посчитать разницу лучшей из трёх цен SteamDT относительно lis-skins, в ₽ и в %\n- перезаписать файлы C:\\Users\\Пользователь\\Desktop\\cs2-market-tools\\lisskins-steamdt-compare\\index.html и comparison.xlsx новыми данными (не только показать таблицу в чате — реально сохранить файлы на диске)\n- закоммитить и запушить изменения в репозиторий v1nkore/cs2-market-tools, чтобы при следующем открытии index.html на диске уже были свежие данные';
+  if (SERVER_MODE) {
+    btn.disabled = true;
+    showStatus('Запускаю пересборку (займёт ~5-10 минут)...');
+    try {
+      const r = await fetch('/api/rebuild', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url }) });
+      if (!r.ok) { showStatus('Сервер ответил ' + r.status + ' (пересборка уже идёт?)'); }
+      await pollUntilDone();
+    } catch (e) {
+      showStatus('Не удалось связаться с сервером: ' + e.message);
+      btn.disabled = false;
+    }
+    return;
+  }
+  // файл открыт напрямую (file://) — сервер недоступен, отдаём промпт для Claude
+  const prompt = 'Обнови сравнение цен CS2 по ссылке: ' + url + '\n\nТезисно:\n- список избранного lis-skins по этой ссылке — UI сайта его не фильтрует (баг), читать skin_ids напрямую из клиентского кэша страницы (vue-query, ключ userLists)\n- по каждому скину: название, доступное количество, цена в $ и ₽ (курс — с lis-skins)\n- на steamdt.com (/en/mkt) по каждому скину забрать цены Steam, BUFF, YouPin — API отдаёт их в юанях (CNY), перевести в ₽ по курсу из localStorage.commonDictionary.rates того же сайта\n- посчитать разницу лучшей из трёх цен SteamDT относительно lis-skins, в ₽ и в %\n- перезаписать файлы C:\\Users\\Пользователь\\Desktop\\cs2-market-tools\\lisskins-steamdt-compare\\index.html и comparison.xlsx новыми данными (не только показать таблицу в чате — реально сохранить файлы на диске)\n- закоммитить и запушить изменения в репозиторий v1nkore/cs2-market-tools, чтобы при следующем открытии index.html на диске уже были свежие данные\n\nЛибо запустите локальный сервер (node server.mjs в папке проекта) и жмите кнопку там — тогда пересборка пройдёт автоматически без Claude.';
   const box = document.getElementById('prompt-box');
-  const status = document.getElementById('copy-status');
   box.style.display = 'block';
   box.value = prompt;
   box.select();
-  let copied = false;
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(prompt).then(() => { copied = true; status.style.display = 'block'; status.textContent = 'Скопировано — вставьте это сообщение в чат Claude Code.'; }).catch(() => {
-      status.style.display = 'block';
-      status.textContent = 'Не удалось скопировать автоматически — текст выделен ниже, скопируйте вручную (Ctrl+C) и вставьте в чат Claude Code.';
+    navigator.clipboard.writeText(prompt).then(() => { showStatus('Скопировано — вставьте это сообщение в чат Claude Code. Или запустите node server.mjs для автоматической пересборки.'); }).catch(() => {
+      showStatus('Не удалось скопировать автоматически — текст выделен ниже, скопируйте вручную (Ctrl+C).');
     });
   } else {
-    status.style.display = 'block';
-    status.textContent = 'Текст выделен ниже — скопируйте (Ctrl+C) и вставьте в чат Claude Code.';
+    showStatus('Текст выделен ниже — скопируйте (Ctrl+C) и вставьте в чат Claude Code.');
   }
 });
 
