@@ -39,6 +39,12 @@ function collectedToday(job) {
 const state = {};
 for (const k of Object.keys(JOBS)) state[k] = { running: false, proc: null, stop: false, fresh: false, attempts: 0, live: 0, total: totalFor(k), current: '', status: 'idle', startedAt: null, endedAt: null };
 
+function crashHint(errText) {
+  if (/ERR_MODULE_NOT_FOUND|Cannot find package/i.test(errText)) return 'не установлены зависимости — выполните: npm ci (или перезапустите «Открыть панель.bat»)';
+  if (/Executable doesn't exist|playwright install/i.test(errText)) return 'не установлен браузер — выполните: npx playwright install chromium (или перезапустите «Открыть панель.bat»)';
+  return null;
+}
+
 function spawnOnce(job, fresh) {
   const j = JOBS[job], st = state[job];
   const args = [join(ROOT, j.script)];
@@ -48,6 +54,8 @@ function spawnOnce(job, fresh) {
     env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: join(ROOT, 'pw-browsers') },
   });
   st.proc = proc;
+  st.spawnAt = Date.now();
+  const startedDone = Math.max(collectedToday(job), st.live);
   const onData = (buf) => {
     const s = buf.toString();
     let m, re = /\[(\d+)\/(\d+)\]/g;
@@ -56,12 +64,21 @@ function spawnOnce(job, fresh) {
     if (lines.length) st.current = lines[lines.length - 1].slice(0, 80);
   };
   proc.stdout.on('data', onData);
-  proc.stderr.on('data', onData);
+  proc.stderr.on('data', (buf) => { st.lastErr = ((st.lastErr || '') + buf.toString()).slice(-2000); onData(buf); });
   proc.on('exit', (code) => {
     st.proc = null;
     const done = Math.max(collectedToday(job), st.live);
     if (st.stop) { st.status = 'остановлено'; st.running = false; st.endedAt = Date.now(); return; }
     if (done >= st.total && st.total > 0) { st.status = 'готово'; st.live = st.total; st.running = false; st.endedAt = Date.now(); return; }
+    // быстрый краш без прогресса — не жжём попытки, а сразу показываем причину
+    const ranMs = Date.now() - st.spawnAt;
+    st.quickFails = (ranMs < 8000 && done <= startedDone) ? (st.quickFails || 0) + 1 : 0;
+    if (st.quickFails >= 3) {
+      const hint = crashHint(st.lastErr || '');
+      st.status = 'сбой: ' + (hint || ((st.lastErr || 'причина неизвестна, смотрите консоль').replace(/\s+/g, ' ').slice(0, 160)));
+      st.running = false; st.endedAt = Date.now();
+      return;
+    }
     if (st.attempts < MAX_RESUME) { st.attempts++; st.status = `возобновление (${st.attempts})…`; setTimeout(() => { if (!st.stop) spawnOnce(job); }, 2500); }
     else { st.status = 'остановлено (лимит попыток)'; st.running = false; st.endedAt = Date.now(); }
   });
@@ -71,7 +88,9 @@ function startJob(job, fresh) {
   const st = state[job];
   if (st.running) return;
   if (totalFor(job) === 0) { st.status = job === 'guns' ? 'нет config_guns.json (сначала отбор)' : 'нет config.json'; return; }
-  st.running = true; st.stop = false; st.fresh = !!fresh; st.attempts = 0; st.total = totalFor(job); st.status = 'запуск…'; st.startedAt = Date.now(); st.endedAt = null; st.current = '';
+  if (!existsSync(join(ROOT, 'node_modules', 'playwright'))) { st.status = 'нет зависимостей — выполните npm ci (или перезапустите «Открыть панель.bat»)'; return; }
+  if (!existsSync(join(ROOT, 'pw-browsers'))) { st.status = 'нет браузера — npx playwright install chromium (или перезапустите «Открыть панель.bat»)'; return; }
+  st.running = true; st.stop = false; st.fresh = !!fresh; st.attempts = 0; st.quickFails = 0; st.lastErr = ''; st.total = totalFor(job); st.status = 'запуск…'; st.startedAt = Date.now(); st.endedAt = null; st.current = '';
   st.live = fresh ? 0 : collectedToday(job);
   spawnOnce(job, fresh);
   st.status = fresh ? 'перевыгрузка с нуля…' : 'идёт сбор…';
@@ -144,7 +163,7 @@ a.link{color:var(--acc);text-decoration:none;font-size:13px;align-self:center}
 const JOBS=['stickers','guns'];
 function card(k,d){
  const pct=d.total?Math.round(d.done/d.total*100):0;
- let bc='';if(d.running)bc='run';else if(d.status.startsWith('готово'))bc='done';else if(d.status.includes('лимит')||d.status.includes('нет config'))bc='warn';
+ let bc='';if(d.running)bc='run';else if(d.status.startsWith('готово'))bc='done';else if(d.status.includes('лимит')||d.status.includes('нет ')||d.status.includes('сбой'))bc='warn';
  return \`<div class="card">
   <div class="row"><span class="name">\${d.title}</span><span class="badge \${bc}">\${d.status}</span></div>
   <div class="barwrap"><div class="bar" style="width:\${pct}%"></div></div>

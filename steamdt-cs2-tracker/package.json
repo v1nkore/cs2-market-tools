@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "postinstall": "playwright install chromium"
+  },
   "dependencies": {
     "playwright": "^1.60.0"
   }
