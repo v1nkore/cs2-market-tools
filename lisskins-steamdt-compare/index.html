@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LIS-SKINS vs SteamDT</title>
+<style>
+  :root {
+    --surface-2: #ffffff;
+    --surface-1: #f5f5f4;
+    --surface-0: #ececea;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --text-success: #27500a;
+    --text-danger: #791f1f;
+    --bg-success: #eaf3de;
+    --bg-danger: #fcebeb;
+    --border: rgba(11,11,11,0.12);
+    --radius: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-2: #232322;
+      --surface-1: #1a1a19;
+      --surface-0: #121211;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --text-success: #97c459;
+      --text-danger: #f09595;
+      --bg-success: #173404;
+      --bg-danger: #501313;
+      --border: rgba(255,255,255,0.14);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 1.5rem;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    font-size: 14px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  input, select, button {
+    font-family: inherit; font-size: 13px; height: 34px; border-radius: var(--radius);
+    border: 0.5px solid var(--border); background: var(--surface-2); color: var(--text-primary); padding: 0 10px;
+  }
+  button { cursor: pointer; }
+  button:hover { background: var(--surface-1); }
+  a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<div style="margin-bottom:12px;">
+  <div style="font-size:17px;font-weight:600;margin-bottom:2px;">Сравнение цен: LIS-SKINS vs SteamDT</div>
+  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;" id="meta-line">118 позиций избранного · курс $ 81.34 ₽ · курс ¥ 11.4548 ₽ · снято 17.07.2026</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <input id="list-url" type="text" value="https://lis-skins.com/ru/market/cs2/?user_list_id=01kvbgbzhn0acjzykwfagmc96y" placeholder="Ссылка на список избранного lis-skins" style="flex:1;min-width:280px;" />
+    <button id="refresh-btn" style="white-space:nowrap;">Скопировать запрос для Claude</button>
+  </div>
+  <textarea id="prompt-box" readonly style="display:none;width:100%;margin-top:8px;height:64px;font-family:inherit;font-size:12px;padding:8px;border-radius:var(--radius);border:0.5px solid var(--border);background:var(--surface-2);color:var(--text-primary);"></textarea>
+  <div id="copy-status" style="font-size:12px;color:var(--text-secondary);margin-top:4px;display:none;"></div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px;">
+  <div style="background:var(--surface-1);border-radius:var(--radius);padding:0.75rem;">
+    <div style="font-size:12px;color:var(--text-secondary);">Позиций</div>
+    <div style="font-size:22px;font-weight:600;" id="stat-count">118</div>
+  </div>
+  <div style="background:var(--surface-1);border-radius:var(--radius);padding:0.75rem;">
+    <div style="font-size:12px;color:var(--text-secondary);">Сумма LIS-SKINS</div>
+    <div style="font-size:22px;font-weight:600;" id="stat-lis">-</div>
+  </div>
+  <div style="background:var(--surface-1);border-radius:var(--radius);padding:0.75rem;">
+    <div style="font-size:12px;color:var(--text-secondary);">Сумма лучшая на SteamDT</div>
+    <div style="font-size:22px;font-weight:600;" id="stat-best">-</div>
+  </div>
+  <div style="background:var(--surface-1);border-radius:var(--radius);padding:0.75rem;">
+    <div style="font-size:12px;color:var(--text-secondary);">Средняя разница</div>
+    <div style="font-size:22px;font-weight:600;" id="stat-diff">-</div>
+  </div>
+</div>
+
+<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">
+  <input id="search" type="text" placeholder="Поиск по названию" style="flex:1;min-width:160px;" />
+  <select id="sort-select" style="min-width:220px;">
+    <option value="lis-desc">Сорт.: LIS-SKINS ₽ (дороже сверху)</option>
+    <option value="lis-asc">Сорт.: LIS-SKINS ₽ (дешевле сверху)</option>
+    <option value="diff-desc">Сорт.: разница % (больше сверху)</option>
+    <option value="diff-asc">Сорт.: разница % (меньше сверху)</option>
+    <option value="name-asc">Сорт.: название A-Я</option>
+  </select>
+</div>
+
+<div style="border:0.5px solid var(--border);border-radius:var(--radius);overflow:auto;max-height:70vh;background:var(--surface-2);">
+  <table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead>
+      <tr style="position:sticky;top:0;background:var(--surface-2);z-index:1;">
+        <th style="text-align:left;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Скин</th>
+        <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Кол-во</th>
+        <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">LIS-SKINS ₽</th>
+        <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Steam ₽</th>
+        <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">BUFF ₽</th>
+        <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">YouPin ₽</th>
+        <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Разница</th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+</div>
+
+<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.6;">
+  Разница считается как (лучшая цена на Steam/BUFF/YouPin − цена LIS-SKINS) / цена LIS-SKINS. Зелёный фон строки — на SteamDT дешевле, чем на LIS-SKINS. Данные собраны вручную через браузер (антибот lis-skins и SteamDT блокирует прямые запросы), поэтому этот файл — снимок на момент сбора. Кнопка «Обновить данные» работает только в интерактивной версии внутри чата Claude Code — там она просит Claude заново собрать данные и перерисовать таблицу. Чтобы обновить этот файл, попросите Claude заново в чате.
+</div>
+</div>
+
+<script>
+const DATA = {"usd_rate": 81.34, "cny_rate": 11.4548, "rows": [["14783", "M4A4 | Desolate Space (Factory New)", "https://lis-skins.com/ru/market/csgo/m4a4-desolate-space-factory-new/", 146, 7654.09, 10573.81, 7210.8, 6987.43], ["13890", "AK-47 | Point Disarray (Factory New)", "https://lis-skins.com/ru/market/csgo/ak-47-point-disarray-factory-new/", 222, 7048.92, 9094.08, 6414.69, 6294.3], ["166060", "FAMAS | Waters of Nephthys (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/famas-waters-of-nephthys-minimal-wear/", 61, 6865.91, 9003.36, 6179.64, 6242.87], ["144954", "AWP | Containment Breach (Field-Tested)", "https://lis-skins.com/ru/market/csgo/awp-containment-breach-field-tested/", 266, 6610.5, 8468.53, 5882.04, 5864.86], ["147008", "AK-47 | Legion of Anubis (Factory New)", "https://lis-skins.com/ru/market/csgo/ak-47-legion-of-anubis-factory-new/", 147, 4895.85, 6398.65, 4451.45, 4433.01], ["10510", "USP-S | Orion (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/usp-s-orion-minimal-wear/", 166, 4788.49, 6455.01, 4438.74, 4364.16], ["12777", "MAC-10 | Fade (Factory New)", "https://lis-skins.com/ru/market/csgo/mac-10-fade-factory-new/", 293, 4690.06, 6185.59, 4301.28, 4255.23], ["139376", "AWP | Neo-Noir (Factory New)", "https://lis-skins.com/ru/market/csgo/awp-neo-noir-factory-new/", 237, 4587.58, 6547.33, 4255.46, 4181.0], ["184606", "M4A1-S | Vaporwave (Field-Tested)", "https://lis-skins.com/ru/market/csgo/m4a1-s-vaporwave-field-tested/", 253, 4453.36, 6036.91, 3969.09, 4032.09], ["144879", "AWP | Containment Breach (Well-Worn)", "https://lis-skins.com/ru/market/csgo/awp-containment-breach-well-worn/", 82, 4232.93, 5878.72, 4001.51, 3946.18], ["166059", "FAMAS | Waters of Nephthys (Field-Tested)", "https://lis-skins.com/ru/market/csgo/famas-waters-of-nephthys-field-tested/", 102, 3953.12, 5399.56, 3676.99, 3625.33], ["184792", "Desert Eagle | Starcade (Field-Tested)", "https://lis-skins.com/ru/market/csgo/desert-eagle-starcade-field-tested/", 185, 3916.52, 5126.37, 3688.45, 3550.99], ["166102", "P250 | Apep's Curse (Field-Tested)", "https://lis-skins.com/ru/market/csgo/p250-apep's-curse-field-tested/", 61, 3845.76, 6316.41, 3642.63, 3665.54], ["12764", "CZ75-Auto | Emerald (Factory New)", "https://lis-skins.com/ru/market/csgo/cz75-auto-emerald-factory-new/", 66, 3115.32, 4120.41, 2856.6, 2605.97], ["144904", "Dual Berettas | Emerald (Factory New)", "https://lis-skins.com/ru/market/csgo/dual-berettas-emerald-factory-new/", 110, 3064.89, 4465.65, 2695.31, 2965.07], ["10430", "SCAR-20 | Cyrex (Factory New)", "https://lis-skins.com/ru/market/csgo/scar-20-cyrex-factory-new/", 86, 2883.5, 4384.21, 2662.1, 2696.46], ["184741", "M4A4 | Polysoup (Factory New)", "https://lis-skins.com/ru/market/csgo/m4a4-polysoup-factory-new/", 262, 2693.98, 3586.38, 2388.33, 2438.38], ["11697", "Galil AR | Cerberus (Field-Tested)", "https://lis-skins.com/ru/market/csgo/galil-ar-cerberus-field-tested/", 134, 2632.98, 3513.65, 2519.94, 2382.6], ["16912", "AWP | Fever Dream (Factory New)", "https://lis-skins.com/ru/market/csgo/awp-fever-dream-factory-new/", 214, 2339.34, 3129.22, 2181.68, 2113.41], ["8327", "UMP-45 | Blaze (Factory New)", "https://lis-skins.com/ru/market/csgo/ump-45-blaze-factory-new/", 218, 2103.45, 2677.44, 1898.98, 1901.5], ["60299", "SG 553 | Integrale (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/sg-553-integrale-minimal-wear/", 148, 1721.97, 2403.45, 1586.38, 1555.56], ["11704", "FAMAS | Styx (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/famas-styx-minimal-wear/", 76, 1630.87, 2347.89, 1464.27, 1489.12], ["184688", "M4A4 | Polysoup (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/m4a4-polysoup-minimal-wear/", 125, 1598.33, 2171.72, 1442.16, 1407.79], ["166065", "Glock-18 | Ramese's Reach (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/glock-18-ramese's-reach-minimal-wear/", 164, 1584.5, 2129.45, 1465.64, 1420.4], ["150867", "MP9 | Music Box (Factory New)", "https://lis-skins.com/ru/market/csgo/mp9-music-box-factory-new/", 39, 1412.06, 1942.28, 1288.55, 1294.39], ["8712", "Tec-9 | Brass (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/tec-9-brass-minimal-wear/", 80, 1290.87, 1957.17, 1241.7, 1273.66], ["151559", "Sticker | Movistar Riders (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-movistar-riders-holo-stockholm-2021/", 66, 1157.47, 1495.31, 993.13, 948.23], ["144698", "'The Doctor' Romanov | Sabre", "https://lis-skins.com/ru/market/csgo/'the-doctor'-romanov-sabre/", 1694, 1096.46, 1495.31, 1018.22, 1007.79], ["144706", "Michael Syfers | FBI Sniper", "https://lis-skins.com/ru/market/csgo/michael-syfers-fbi-sniper/", 1384, 1084.26, 1524.29, 972.51, 977.09], ["8950", "Five-SeveN | Copper Galaxy (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/five-seven-copper-galaxy-minimal-wear/", 62, 1072.87, 1541.47, 969.08, 1041.24], ["150547", "Sticker | Great Wave (Foil)", "https://lis-skins.com/ru/market/csgo/sticker-great-wave-foil/", 3, 1026.51, 1408.37, 1027.27, 970.68], ["144765", "SG 553 | Candy Apple (Factory New)", "https://lis-skins.com/ru/market/csgo/sg-553-candy-apple-factory-new/", 84, 1022.44, 1406.08, 900.35, 943.76], ["12593", "M4A4 | Evil Daimyo (Factory New)", "https://lis-skins.com/ru/market/csgo/m4a4-evil-daimyo-factory-new/", 357, 1004.55, 1407.57, 962.2, 967.93], ["148122", "AWP | Exoskeleton (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/awp-exoskeleton-minimal-wear/", 183, 943.54, 1244.79, 859.11, 848.57], ["144692", "The Elite Mr. Muhlik | Elite Crew", "https://lis-skins.com/ru/market/csgo/the-elite-mr.-muhlik-elite-crew/", 1774, 880.91, 1288.55, 832.76, 810.89], ["9424", "USP-S | Guardian (Factory New)", "https://lis-skins.com/ru/market/csgo/usp-s-guardian-factory-new/", 170, 872.78, 1184.43, 823.37, 827.04], ["184958", "P250 | Epicenter (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/p250-epicenter-minimal-wear/", 100, 850.82, 1091.3, 743.42, 787.98], ["153845", "Sticker | Cloud9 (Holo) | Antwerp 2022", "https://lis-skins.com/ru/market/csgo/sticker-cloud9-holo-antwerp-2022/", 201, 845.94, 1236.89, 767.47, 734.83], ["11713", "FAMAS | Styx (Field-Tested)", "https://lis-skins.com/ru/market/csgo/famas-styx-field-tested/", 192, 838.62, 1171.94, 753.61, 813.29], ["166064", "Glock-18 | Ramese's Reach (Field-Tested)", "https://lis-skins.com/ru/market/csgo/glock-18-ramese's-reach-field-tested/", 499, 828.85, 1124.98, 732.99, 719.25], ["144699", "Osiris | Elite Crew", "https://lis-skins.com/ru/market/csgo/osiris-elite-crew/", 1256, 824.79, 1023.94, 756.02, 762.89], ["144693", "B Squadron Officer | SAS", "https://lis-skins.com/ru/market/csgo/b-squadron-officer-sas/", 1000, 818.28, 1210.31, 744.56, 719.13], ["148019", "AUG | Carved Jade (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/aug-carved-jade-minimal-wear/", 93, 794.69, 1009.86, 750.63, 753.73], ["184669", "SSG 08 | Rapid Transit (Factory New)", "https://lis-skins.com/ru/market/csgo/ssg-08-rapid-transit-factory-new/", 179, 757.28, 944.91, 658.65, 672.17], ["144696", "Markus Delrow | FBI HRT", "https://lis-skins.com/ru/market/csgo/markus-delrow-fbi-hrt/", 703, 707.66, 927.72, 649.49, 638.03], ["150565", "Sticker | Great Wave (Holo)", "https://lis-skins.com/ru/market/csgo/sticker-great-wave-holo/", 19, 699.52, 932.42, 605.96, 628.87], ["153890", "Sticker | 9z Team (Holo) | Antwerp 2022", "https://lis-skins.com/ru/market/csgo/sticker-9z-team-holo-antwerp-2022/", 98, 673.5, 994.28, 673.54, 627.72], ["151557", "Sticker | Copenhagen Flames (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-copenhagen-flames-holo-stockholm-2021/", 258, 668.61, 886.95, 676.41, 662.09], ["144695", "Slingshot | Phoenix", "https://lis-skins.com/ru/market/csgo/slingshot-phoenix/", 835, 666.17, 976.98, 599.09, 584.19], ["60309", "SG 553 | Integrale (Field-Tested)", "https://lis-skins.com/ru/market/csgo/sg-553-integrale-field-tested/", 137, 657.23, 810.2, 570.79, 576.86], ["144702", "Rezan The Ready | Sabre", "https://lis-skins.com/ru/market/csgo/rezan-the-ready-sabre/", 1380, 649.09, 861.97, 599.66, 574.8], ["144697", "Blackwolf | Sabre", "https://lis-skins.com/ru/market/csgo/blackwolf-sabre/", 823, 643.4, 889.35, 593.59, 578.35], ["148278", "Rezan the Redshirt | Sabre", "https://lis-skins.com/ru/market/csgo/rezan-the-redshirt-sabre/", 741, 640.15, 882.25, 581.9, 571.82], ["144694", "Prof. Shahmat | Elite Crew", "https://lis-skins.com/ru/market/csgo/prof.-shahmat-elite-crew/", 1143, 628.76, 828.98, 538.38, 542.96], ["151523", "Sticker | Entropiq (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-entropiq-holo-stockholm-2021/", 144, 624.69, 836.89, 550.29, 568.16], ["153882", "Sticker | Outsiders (Holo) | Antwerp 2022", "https://lis-skins.com/ru/market/csgo/sticker-outsiders-holo-antwerp-2022/", 209, 577.51, 769.53, 561.17, 542.96], ["150533", "Sticker | Liquid Fire", "https://lis-skins.com/ru/market/csgo/sticker-liquid-fire/", 8, 575.07, 851.78, 521.54, 513.98], ["151540", "Sticker | Team Spirit (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-team-spirit-holo-stockholm-2021/", 56, 561.25, 743.65, 512.03, 457.05], ["184781", "AK-47 | Crossfade (Factory New)", "https://lis-skins.com/ru/market/csgo/ak-47-crossfade-factory-new/", 376, 557.99, 769.53, 485.68, 487.97], ["149109", "AK-47 | Slate (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/ak-47-slate-minimal-wear/", 1277, 553.11, 738.95, 526.92, 501.72], ["8534", "Tec-9 | Brass (Field-Tested)", "https://lis-skins.com/ru/market/csgo/tec-9-brass-field-tested/", 76, 545.79, 778.12, 476.41, 576.86], ["144688", "Dragomir | Sabre", "https://lis-skins.com/ru/market/csgo/dragomir-sabre/", 867, 534.4, 782.82, 458.19, 470.68], ["144705", "Maximus | Sabre", "https://lis-skins.com/ru/market/csgo/maximus-sabre/", 1140, 533.59, 728.87, 468.5, 479.73], ["185577", "Sticker | Wildcard (Holo) | Shanghai 2024", "https://lis-skins.com/ru/market/csgo/sticker-wildcard-holo-shanghai-2024/", 123, 495.36, 552.69, 418.1, 396.34], ["151538", "Sticker | BIG (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-big-holo-stockholm-2021/", 103, 492.11, 679.5, 462.32, 456.82], ["153925", "Sticker | Copenhagen Flames (Holo) | Antwerp 2022", "https://lis-skins.com/ru/market/csgo/sticker-copenhagen-flames-holo-antwerp-2022/", 278, 479.09, 606.65, 507.45, 481.1], ["151556", "Sticker | Sharks Esports (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-sharks-esports-holo-stockholm-2021/", 135, 476.65, 600.46, 524.63, 451.66], ["151513", "Sticker | Virtus.Pro (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-virtus.pro-holo-stockholm-2021/", 108, 474.21, 693.59, 413.29, 432.99], ["151518", "Sticker | GODSENT (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-godsent-holo-stockholm-2021/", 96, 468.52, 685.8, 433.45, 454.76], ["185546", "Sticker | Team Spirit (Holo) | Shanghai 2024", "https://lis-skins.com/ru/market/csgo/sticker-team-spirit-holo-shanghai-2024/", 174, 461.2, 620.74, 457.05, 399.77], ["35586", "CZ75-Auto | Tacticat (Factory New)", "https://lis-skins.com/ru/market/csgo/cz75-auto-tacticat-factory-new/", 28, 441.68, 578.47, 398.63, 423.83], ["145908", "AK-47 | Phantom Disruptor (Field-Tested)", "https://lis-skins.com/ru/market/csgo/ak-47-phantom-disruptor-field-tested/", 871, 438.42, 597.25, 423.71, 421.54], ["151558", "Sticker | FURIA (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-furia-holo-stockholm-2021/", 128, 436.8, 618.44, 422.68, 403.78], ["151534", "Sticker | Evil Geniuses (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-evil-geniuses-holo-stockholm-2021/", 488, 435.98, 573.77, 398.63, 383.51], ["150911", "MAC-10 | Strats (Factory New)", "https://lis-skins.com/ru/market/csgo/mac-10-strats-factory-new/", 28, 423.78, 578.47, 366.55, 397.37], ["153857", "Sticker | Imperial Esports (Holo) | Antwerp 2022", "https://lis-skins.com/ru/market/csgo/sticker-imperial-esports-holo-antwerp-2022/", 120, 412.39, 586.37, 408.94, 378.01], ["166055", "AWP | Black Nile (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/awp-black-nile-minimal-wear/", 494, 409.95, 566.78, 360.83, 393.82], ["153871", "Sticker | G2 Esports (Holo) | Antwerp 2022", "https://lis-skins.com/ru/market/csgo/sticker-g2-esports-holo-antwerp-2022/", 26, 397.75, 486.94, 320.28, 289.58], ["153932", "Sticker | Team Spirit (Holo) | Antwerp 2022", "https://lis-skins.com/ru/market/csgo/sticker-team-spirit-holo-antwerp-2022/", 68, 396.94, 573.77, 385.68, 368.84], ["150671", "R8 Revolver | Blaze (Factory New)", "https://lis-skins.com/ru/market/csgo/r8-revolver-blaze-factory-new/", 579, 390.43, 507.22, 360.25, 344.79], ["148014", "Sticker | Stone Scales (Foil)", "https://lis-skins.com/ru/market/csgo/sticker-stone-scales-foil/", 81, 388.81, 562.89, 372.17, 378.01], ["144793", "Sticker | Gold Web (Foil)", "https://lis-skins.com/ru/market/csgo/sticker-gold-web-foil/", 147, 379.86, 493.13, 364.38, 329.78], ["151511", "Sticker | Astralis (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-astralis-holo-stockholm-2021/", 54, 379.04, 525.32, 356.7, 349.37], ["184947", "P250 | Epicenter (Field-Tested)", "https://lis-skins.com/ru/market/csgo/p250-epicenter-field-tested/", 100, 376.6, 558.88, 347.08, 373.31], ["151516", "Sticker | paiN Gaming (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-pain-gaming-holo-stockholm-2021/", 101, 370.91, 472.05, 337.46, 340.21], ["151489", "Sticker | Renegades (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-renegades-holo-stockholm-2021/", 110, 361.96, 443.87, 338.83, 337.92], ["185483", "Sticker | Fnatic (Holo) | Shanghai 2024", "https://lis-skins.com/ru/market/csgo/sticker-fnatic-holo-shanghai-2024/", 42, 361.96, 446.16, 352.69, 309.28], ["149103", "AK-47 | Slate (Field-Tested)", "https://lis-skins.com/ru/market/csgo/ak-47-slate-field-tested/", 2351, 357.08, 463.46, 321.88, 330.81], ["151507", "Sticker | Gambit Gaming (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-gambit-gaming-holo-stockholm-2021/", 76, 356.27, 468.84, 341.01, 329.1], ["153892", "Sticker | Complexity Gaming (Holo) | Antwerp 2022", "https://lis-skins.com/ru/market/csgo/sticker-complexity-gaming-holo-antwerp-2022/", 58, 332.68, 465.75, 303.55, 306.99], ["151504", "Sticker | Team Liquid (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-team-liquid-holo-stockholm-2021/", 119, 331.87, 427.38, 306.87, 308.13], ["185556", "Sticker | Perfect World (Holo) | Shanghai 2024", "https://lis-skins.com/ru/market/csgo/sticker-perfect-world-holo-shanghai-2024/", 360, 317.23, 400.8, 297.82, 290.95], ["184762", "M4A4 | Turbine (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/m4a4-turbine-minimal-wear/", 243, 308.28, 414.89, 295.53, 287.17], ["10565", "Galil AR | Tuxedo (Factory New)", "https://lis-skins.com/ru/market/csgo/galil-ar-tuxedo-factory-new/", 360, 306.65, 397.71, 281.79, 266.78], ["151501", "Sticker | G2 Esports (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-g2-esports-holo-stockholm-2021/", 130, 300.96, 371.82, 283.85, 274.92], ["16940", "XM1014 | Seasons (Factory New)", "https://lis-skins.com/ru/market/csgo/xm1014-seasons-factory-new/", 49, 293.64, 402.41, 263.35, 272.62], ["151517", "Sticker | Heroic (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-heroic-holo-stockholm-2021/", 79, 290.38, 397.71, 270.1, 262.31], ["151506", "Sticker | Vitality (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-vitality-holo-stockholm-2021/", 241, 272.49, 380.41, 249.6, 250.86], ["13835", "Five-SeveN | Retrobution (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/five-seven-retrobution-minimal-wear/", 72, 268.42, 374.92, 243.87, 233.33], ["184623", "AK-47 | Crossfade (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/ak-47-crossfade-minimal-wear/", 295, 258.66, 348.34, 243.99, 240.44], ["8688", "P2000 | Amber Fade (Factory New)", "https://lis-skins.com/ru/market/csgo/p2000-amber-fade-factory-new/", 311, 253.78, 338.95, 232.99, 235.97], ["151539", "Sticker | Natus Vincere (Holo) | Stockholm 2021", "https://lis-skins.com/ru/market/csgo/sticker-natus-vincere-holo-stockholm-2021/", 183, 241.58, 351.43, 220.39, 219.93], ["10588", "CZ75-Auto | Tuxedo (Factory New)", "https://lis-skins.com/ru/market/csgo/cz75-auto-tuxedo-factory-new/", 119, 240.77, 325.66, 216.5, 209.28], ["184873", "Dual Berettas | Hydro Strike (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/dual-berettas-hydro-strike-minimal-wear/", 46, 235.07, 296.68, 206.19, 208.25], ["14565", "SSG 08 | Ghost Crusader (Minimal Wear)", "https://lis-skins.com/ru/market/csgo/ssg-08-ghost-crusader-minimal-wear/", 139, 187.9, 239.52, 178.69, 168.16], ["153973", "Sticker | forZe eSports (Holo) | Antwerp 2022", "https://lis-skins.com/ru/market/csgo/sticker-forze-esports-holo-antwerp-2022/", 20, 182.2, 248.11, 170.56, 187.86], ["147991", "Sticker | Broken Fang (Holo)", "https://lis-skins.com/ru/market/csgo/sticker-broken-fang-holo/", 104, 182.2, 293.59, 174.0, 178.69], ["153500", "Sticker | BIG (Holo) | Antwerp 2022", "https://lis-skins.com/ru/market/csgo/sticker-big-holo-antwerp-2022/", 56, 173.25, 227.72, 181.56, 175.26], ["148060", "Sticker | Ancient Beast (Foil)", "https://lis-skins.com/ru/market/csgo/sticker-ancient-beast-foil/", 25, 166.75, 208.25, 145.13, 153.49], ["148012", "Sticker | Coiled Strike (Holo)", "https://lis-skins.com/ru/market/csgo/sticker-coiled-strike-holo/", 265, 152.11, 213.63, 132.53, 144.33], ["144738", "Sticker | Mastermind (Holo)", "https://lis-skins.com/ru/market/csgo/sticker-mastermind-holo/", 275, 136.65, 177.66, 128.98, 147.54], ["8757", "FAMAS | Teardown (Factory New)", "https://lis-skins.com/ru/market/csgo/famas-teardown-factory-new/", 53, 131.77, 172.17, 124.74, 124.86], ["147960", "Sticker | Enemy Spotted (Holo)", "https://lis-skins.com/ru/market/csgo/sticker-enemy-spotted-holo/", 289, 127.7, 161.97, 121.99, 125.43], ["144733", "Sticker | Web Stuck (Holo)", "https://lis-skins.com/ru/market/csgo/sticker-web-stuck-holo/", 1042, 116.32, 149.49, 106.53, 103.09], ["184911", "Glock-18 | Teal Graf (Factory New)", "https://lis-skins.com/ru/market/csgo/glock-18-teal-graf-factory-new/", 554, 83.78, 120.5, 74.46, 78.81], ["8547", "Dual Berettas | Cobalt Quartz (Factory New)", "https://lis-skins.com/ru/market/csgo/dual-berettas-cobalt-quartz-factory-new/", 295, 69.95, 98.63, 67.58, 65.64], ["184825", "Galil AR | NV (Factory New)", "https://lis-skins.com/ru/market/csgo/galil-ar-nv-factory-new/", 286, 60.19, 82.93, 50.97, 50.4], ["149043", "Nova | Windblown (Factory New)", "https://lis-skins.com/ru/market/csgo/nova-windblown-factory-new/", 64, 39.04, 64.15, 35.4, 35.62]]};
+
+const fmt = (n) => Math.round(n).toLocaleString('ru-RU');
+const fmtPct = (n) => (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
+
+function computeRows() {
+  return DATA.rows.map(r => {
+    const [id, name, url, qty, lis, steam, buff, youpin] = r;
+    const best = Math.min(steam, buff, youpin);
+    const bestLabel = best === steam ? 'Steam' : (best === buff ? 'BUFF' : 'YouPin');
+    const diff = ((best - lis) / lis) * 100;
+    return {id, name, url, qty, lis, steam, buff, youpin, best, bestLabel, diff};
+  });
+}
+const ALL_ROWS = computeRows();
+
+function renderStats(rows) {
+  const sumLis = rows.reduce((a, r) => a + r.lis, 0);
+  const sumBest = rows.reduce((a, r) => a + r.best, 0);
+  const avgDiff = rows.reduce((a, r) => a + r.diff, 0) / (rows.length || 1);
+  document.getElementById('stat-count').textContent = rows.length;
+  document.getElementById('stat-lis').textContent = fmt(sumLis) + ' ₽';
+  document.getElementById('stat-best').textContent = fmt(sumBest) + ' ₽';
+  const diffEl = document.getElementById('stat-diff');
+  diffEl.textContent = fmtPct(avgDiff);
+  diffEl.style.color = avgDiff >= 0 ? 'var(--text-success)' : 'var(--text-danger)';
+}
+
+function renderTable(rows) {
+  const body = document.getElementById('table-body');
+  body.innerHTML = rows.map(r => {
+    const rowBg = r.diff >= 0 ? 'background:var(--bg-success);' : 'background:var(--bg-danger);';
+    const diffColor = r.diff >= 0 ? 'color:var(--text-success);' : 'color:var(--text-danger);';
+    return `<tr style="${rowBg}">
+      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);"><a href="${r.url}" target="_blank" rel="noopener" style="color:var(--text-primary);text-decoration:none;">${r.name}</a></td>
+      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;color:var(--text-secondary);">${r.qty}</td>
+      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;">${fmt(r.lis)}</td>
+      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;${r.bestLabel==='Steam'?'font-weight:600;':''}">${fmt(r.steam)}</td>
+      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;${r.bestLabel==='BUFF'?'font-weight:600;':''}">${fmt(r.buff)}</td>
+      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;${r.bestLabel==='YouPin'?'font-weight:600;':''}">${fmt(r.youpin)}</td>
+      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;${diffColor}">${fmtPct(r.diff)} (${r.bestLabel})</td>
+    </tr>`;
+  }).join('');
+}
+
+function applyFilterSort() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const sortMode = document.getElementById('sort-select').value;
+  let rows = ALL_ROWS.filter(r => r.name.toLowerCase().includes(q));
+  if (sortMode === 'lis-desc') rows.sort((a, b) => b.lis - a.lis);
+  else if (sortMode === 'lis-asc') rows.sort((a, b) => a.lis - b.lis);
+  else if (sortMode === 'diff-desc') rows.sort((a, b) => b.diff - a.diff);
+  else if (sortMode === 'diff-asc') rows.sort((a, b) => a.diff - b.diff);
+  else if (sortMode === 'name-asc') rows.sort((a, b) => a.name.localeCompare(b.name));
+  renderStats(rows);
+  renderTable(rows);
+}
+
+document.getElementById('search').addEventListener('input', applyFilterSort);
+document.getElementById('sort-select').addEventListener('change', applyFilterSort);
+document.getElementById('refresh-btn').addEventListener('click', () => {
+  const url = document.getElementById('list-url').value.trim() || 'https://lis-skins.com/ru/market/cs2/?user_list_id=01kvbgbzhn0acjzykwfagmc96y';
+  const prompt = 'Пересобери сравнение lis-skins/SteamDT для списка ' + url + ': собери список избранного по этой ссылке с lis-skins (favourite skin_ids из userLists), собери цены Steam, BUFF и YouPin через steamdt.com для всех позиций и перерисуй таблицу с новыми данными.';
+  const box = document.getElementById('prompt-box');
+  const status = document.getElementById('copy-status');
+  box.style.display = 'block';
+  box.value = prompt;
+  box.select();
+  let copied = false;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(prompt).then(() => { copied = true; status.style.display = 'block'; status.textContent = 'Скопировано — вставьте это сообщение в чат Claude Code.'; }).catch(() => {
+      status.style.display = 'block';
+      status.textContent = 'Не удалось скопировать автоматически — текст выделен ниже, скопируйте вручную (Ctrl+C) и вставьте в чат Claude Code.';
+    });
+  } else {
+    status.style.display = 'block';
+    status.textContent = 'Текст выделен ниже — скопируйте (Ctrl+C) и вставьте в чат Claude Code.';
+  }
+});
+
+applyFilterSort();
+</script>
+</body>
+</html>
