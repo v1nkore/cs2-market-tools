@@ -112,8 +112,12 @@ async function scrapeSteamdt(page, names) {
         }
         ok = true;
       } catch (e) {
+        const msg = String(e.message || e);
         if (attempt === 3) {
-          prices[name] = { steam: null, buff: null, youpin: null, error: String(e.message || e) };
+          prices[name] = { steam: null, buff: null, youpin: null, error: msg };
+        } else if (/too fast|try again/i.test(msg)) {
+          progress({ stage: 'steamdt', done, total: names.length, msg: 'рейт-лимит, пауза 65с...' });
+          await page.waitForTimeout(65000);
         } else {
           await page.waitForTimeout(2000 * attempt);
         }
@@ -121,6 +125,7 @@ async function scrapeSteamdt(page, names) {
     }
     done++;
     progress({ stage: 'steamdt', done, total: names.length, msg: name });
+    await page.waitForTimeout(1200);
   }
   return { prices, cnyRate };
 }
