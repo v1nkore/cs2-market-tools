@@ -126,6 +126,17 @@ npx playwright install chromium
 ```
 Дальше — любой `.bat` или `node scrape.mjs`. Папки `data/`, `reports/` создаются сами.
 
+### Запуск в Docker
+
+Нужен Node.js + Playwright с браузером Chromium — в контейнере это всё уже собрано в образе:
+
+```
+docker build -t steamdt-cs2-tracker .
+docker run -p 4317:4317 -v "$(pwd)/data:/app/data" -v "$(pwd)/reports:/app/reports" steamdt-cs2-tracker
+```
+
+Панель откроется на `http://localhost:4317`. Тома для `data/` и `reports/` — чтобы собранные данные и отчёты не терялись между перезапусками контейнера. Для пушек аналогично примонтируйте `data_guns/` и `reports_guns/`.
+
 **Важно про историю:** собранные данные (`data/`, `data_guns/`, отчёты) в git
 не хранятся — это личные суммы. Между машинами история едет только через
 синхронизацию папки (OneDrive); свежий клон с GitHub начинает историю с нуля.
