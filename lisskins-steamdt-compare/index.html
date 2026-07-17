@@ -114,7 +114,7 @@
 </div>
 
 <div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.6;">
-  Разница считается как (лучшая цена на Steam/BUFF/YouPin − цена LIS-SKINS) / цена LIS-SKINS. Зелёный фон строки — на SteamDT дешевле, чем на LIS-SKINS. Данные собраны вручную через браузер (антибот lis-skins и SteamDT блокирует прямые запросы), поэтому этот файл — снимок на момент сбора. Кнопка «Обновить данные» работает только в интерактивной версии внутри чата Claude Code — там она просит Claude заново собрать данные и перерисовать таблицу. Чтобы обновить этот файл, попросите Claude заново в чате.
+  Разница считается как (лучшая цена на Steam/BUFF/YouPin − цена LIS-SKINS) / цена LIS-SKINS. Зелёный фон строки — на SteamDT дешевле, чем на LIS-SKINS. Данные собраны вручную через браузер (антибот lis-skins и SteamDT блокирует прямые запросы), поэтому этот файл — снимок на момент сбора. Этот HTML-файл сам по себе не может пересобрать данные (антибот заблокирует прямые запросы и из него). Кнопка «Скопировать запрос для Claude» копирует готовый промпт с нужной ссылкой — вставьте его в чат Claude Code, Claude заново соберёт данные и перезапишет именно этот файл (index.html в репозитории cs2-market-tools) и comparison.xlsx, закоммитит и запушит — так что при следующем открытии файла тут будут свежие цифры.
 </div>
 </div>
 
@@ -181,7 +181,7 @@ document.getElementById('search').addEventListener('input', applyFilterSort);
 document.getElementById('sort-select').addEventListener('change', applyFilterSort);
 document.getElementById('refresh-btn').addEventListener('click', () => {
   const url = document.getElementById('list-url').value.trim() || 'https://lis-skins.com/ru/market/cs2/?user_list_id=01kvbgbzhn0acjzykwfagmc96y';
-  const prompt = 'Обнови сравнение цен CS2 по ссылке: ' + url + '\n\nТезисно:\n- список избранного lis-skins по этой ссылке — UI сайта его не фильтрует (баг), читать skin_ids напрямую из клиентского кэша страницы (vue-query, ключ userLists)\n- по каждому скину: название, доступное количество, цена в $ и ₽ (курс — с lis-skins)\n- на steamdt.com (/en/mkt) по каждому скину забрать цены Steam, BUFF, YouPin — API отдаёт их в юанях (CNY), перевести в ₽ по курсу из localStorage.commonDictionary.rates того же сайта\n- посчитать разницу лучшей из трёх цен SteamDT относительно lis-skins, в ₽ и в %\n- перерисовать таблицу (index.html) и обновить comparison.xlsx новыми данными';
+  const prompt = 'Обнови сравнение цен CS2 по ссылке: ' + url + '\n\nТезисно:\n- список избранного lis-skins по этой ссылке — UI сайта его не фильтрует (баг), читать skin_ids напрямую из клиентского кэша страницы (vue-query, ключ userLists)\n- по каждому скину: название, доступное количество, цена в $ и ₽ (курс — с lis-skins)\n- на steamdt.com (/en/mkt) по каждому скину забрать цены Steam, BUFF, YouPin — API отдаёт их в юанях (CNY), перевести в ₽ по курсу из localStorage.commonDictionary.rates того же сайта\n- посчитать разницу лучшей из трёх цен SteamDT относительно lis-skins, в ₽ и в %\n- перезаписать файлы C:\\Users\\Пользователь\\Desktop\\cs2-market-tools\\lisskins-steamdt-compare\\index.html и comparison.xlsx новыми данными (не только показать таблицу в чате — реально сохранить файлы на диске)\n- закоммитить и запушить изменения в репозиторий v1nkore/cs2-market-tools, чтобы при следующем открытии index.html на диске уже были свежие данные';
   const box = document.getElementById('prompt-box');
   const status = document.getElementById('copy-status');
   box.style.display = 'block';
