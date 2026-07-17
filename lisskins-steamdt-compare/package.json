@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "rebuild": "node scrape.mjs"
+    "rebuild": "node scrape.mjs",
+    "postinstall": "playwright install chromium"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

@@ -30,6 +30,13 @@ function runGitPush(cb) {
 }
 
 function startRebuild(listUrl) {
+  if (!fs.existsSync(path.join(__dirname, 'node_modules', 'playwright'))) {
+    Object.assign(state, {
+      running: false, stage: 'error', done: 0, total: 0, msg: '', finishedAt: null, gitResult: null,
+      error: 'Зависимости не установлены. Выполните в папке проекта: npm install (браузер Chromium поставится автоматически), затем перезапустите сервер. На Windows проще запустить «Открыть панель.bat».',
+    });
+    return;
+  }
   state.running = true;
   Object.assign(state, { stage: 'start', done: 0, total: 0, msg: '', error: null, finishedAt: null, gitResult: null });
   const args = [path.join(__dirname, 'scrape.mjs')];
@@ -60,7 +67,13 @@ function startRebuild(listUrl) {
         return;
       }
     } else {
-      state.error = 'scrape завершился с кодом ' + code + (stderr ? ': ' + stderr.slice(-500) : '');
+      let hint = '';
+      if (/ERR_MODULE_NOT_FOUND|Cannot find package/i.test(stderr)) {
+        hint = ' Похоже, не установлены зависимости — выполните: npm install';
+      } else if (/Executable doesn't exist|playwright install/i.test(stderr)) {
+        hint = ' Похоже, не установлен браузер — выполните: npx playwright install chromium';
+      }
+      state.error = 'scrape завершился с кодом ' + code + '.' + hint + (stderr ? ' | ' + stderr.slice(0, 400) : '');
       state.stage = 'error';
     }
     state.running = false;
