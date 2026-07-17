@@ -181,7 +181,7 @@ document.getElementById('search').addEventListener('input', applyFilterSort);
 document.getElementById('sort-select').addEventListener('change', applyFilterSort);
 document.getElementById('refresh-btn').addEventListener('click', () => {
   const url = document.getElementById('list-url').value.trim() || 'https://lis-skins.com/ru/market/cs2/?user_list_id=01kvbgbzhn0acjzykwfagmc96y';
-  const prompt = 'Пересобери сравнение lis-skins/SteamDT для списка ' + url + ': собери список избранного по этой ссылке с lis-skins (favourite skin_ids из userLists), собери цены Steam, BUFF и YouPin через steamdt.com для всех позиций и перерисуй таблицу с новыми данными.';
+  const prompt = 'Обнови сравнение цен CS2 по ссылке: ' + url + '\n\nТезисно:\n- список избранного lis-skins по этой ссылке — UI сайта его не фильтрует (баг), читать skin_ids напрямую из клиентского кэша страницы (vue-query, ключ userLists)\n- по каждому скину: название, доступное количество, цена в $ и ₽ (курс — с lis-skins)\n- на steamdt.com (/en/mkt) по каждому скину забрать цены Steam, BUFF, YouPin — API отдаёт их в юанях (CNY), перевести в ₽ по курсу из localStorage.commonDictionary.rates того же сайта\n- посчитать разницу лучшей из трёх цен SteamDT относительно lis-skins, в ₽ и в %\n- перерисовать таблицу (index.html) и обновить comparison.xlsx новыми данными';
   const box = document.getElementById('prompt-box');
   const status = document.getElementById('copy-status');
   box.style.display = 'block';
