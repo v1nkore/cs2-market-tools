@@ -2,6 +2,9 @@
   "name": "lisskins-steamdt-compare",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server.mjs",
     "rebuild": "node scrape.mjs",

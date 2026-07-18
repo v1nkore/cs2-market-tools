@@ -10,6 +10,9 @@ import { dirname, join } from 'path';
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = 4317;
 const MAX_RESUME = 15; // максимум авто-перезапусков при сбоях за один «Запуск»
+// путь к браузерам Playwright: уважаем внешний env (например, /ms-playwright в Docker-образе),
+// иначе локальная папка проекта
+const BROWSERS_PATH = process.env.PLAYWRIGHT_BROWSERS_PATH || join(ROOT, 'pw-browsers');
 
 const pad = (n) => String(n).padStart(2, '0');
 const siteDate = (d = new Date()) => { const b = new Date(d.getTime() + 8 * 3600000); return `${b.getUTCFullYear()}-${pad(b.getUTCMonth()+1)}-${pad(b.getUTCDate())}`; };
@@ -51,7 +54,7 @@ function spawnOnce(job, fresh) {
   if (fresh) args.push('--fresh');
   const proc = spawn(process.execPath, args, {
     cwd: ROOT,
-    env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: join(ROOT, 'pw-browsers') },
+    env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: BROWSERS_PATH },
   });
   st.proc = proc;
   st.spawnAt = Date.now();
@@ -89,7 +92,7 @@ function startJob(job, fresh) {
   if (st.running) return;
   if (totalFor(job) === 0) { st.status = job === 'guns' ? 'нет config_guns.json (сначала отбор)' : 'нет config.json'; return; }
   if (!existsSync(join(ROOT, 'node_modules', 'playwright'))) { st.status = 'нет зависимостей — выполните npm ci (или перезапустите «Открыть панель.bat»)'; return; }
-  if (!existsSync(join(ROOT, 'pw-browsers'))) { st.status = 'нет браузера — npx playwright install chromium (или перезапустите «Открыть панель.bat»)'; return; }
+  if (!existsSync(BROWSERS_PATH)) { st.status = 'нет браузера — npx playwright install chromium (или перезапустите «Открыть панель.bat»)'; return; }
   st.running = true; st.stop = false; st.fresh = !!fresh; st.attempts = 0; st.quickFails = 0; st.lastErr = ''; st.total = totalFor(job); st.status = 'запуск…'; st.startedAt = Date.now(); st.endedAt = null; st.current = '';
   st.live = fresh ? 0 : collectedToday(job);
   spawnOnce(job, fresh);
@@ -98,7 +101,12 @@ function startJob(job, fresh) {
 function stopJob(job) {
   const st = state[job];
   st.stop = true;
-  if (st.proc) { try { exec(`taskkill /pid ${st.proc.pid} /T /F`); } catch {} }
+  if (st.proc) {
+    try {
+      if (process.platform === 'win32') exec(`taskkill /pid ${st.proc.pid} /T /F`);
+      else st.proc.kill('SIGKILL');
+    } catch {}
+  }
   st.running = false; st.status = 'остановлено'; st.endedAt = Date.now();
 }
 
@@ -122,7 +130,13 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/stop') { stopJob(url.searchParams.get('job')); res.writeHead(200); res.end('ok'); return; }
   if (url.pathname === '/open') {
     const job = url.searchParams.get('job');
-    if (JOBS[job]) { const p = join(ROOT, JOBS[job].report); if (existsSync(p)) exec(`start "" "${p}"`); }
+    if (JOBS[job]) {
+      const p = join(ROOT, JOBS[job].report);
+      if (existsSync(p)) {
+        const opener = process.platform === 'win32' ? `start "" "${p}"` : process.platform === 'darwin' ? `open "${p}"` : `xdg-open "${p}"`;
+        try { exec(opener); } catch {}
+      }
+    }
     res.writeHead(200); res.end('ok'); return;
   }
   res.writeHead(404); res.end('not found');
