@@ -153,7 +153,7 @@ function renderTable(rows) {
     const rowBg = r.diff >= 0 ? 'background:var(--bg-success);' : 'background:var(--bg-danger);';
     const diffColor = r.diff >= 0 ? 'color:var(--text-success);' : 'color:var(--text-danger);';
     return `<tr style="${rowBg}">
-      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);white-space:nowrap;"><a href="${r.url}" target="_blank" rel="noopener" style="color:var(--text-primary);text-decoration:none;">${r.name}</a> <a href="https://www.steamdt.com/en/mkt?search=${encodeURIComponent(r.name)}" target="_blank" rel="noopener" title="Открыть на SteamDT" style="color:var(--text-muted);font-size:11px;text-decoration:none;margin-left:4px;">SteamDT&nbsp;↗</a></td>
+      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);white-space:nowrap;"><a href="${r.url}" target="_blank" rel="noopener" style="color:var(--text-primary);text-decoration:none;">${r.name}</a> <a href="https://www.steamdt.com/en/cs2/${encodeURIComponent(r.name)}?tab=trend&type=charts" target="_blank" rel="noopener" title="Открыть предмет на SteamDT" style="color:var(--text-muted);font-size:11px;text-decoration:none;margin-left:4px;">SteamDT&nbsp;↗</a></td>
       <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;color:var(--text-secondary);">${r.qty}</td>
       <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;">${fmt(r.lis)}</td>
       <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;${r.bestLabel==='Steam'?'font-weight:600;':''}">${fmt(r.steam)}</td>
