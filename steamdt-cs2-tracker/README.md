@@ -107,35 +107,39 @@ node report.mjs                      # пересобрать HTML из history.
 отчёты в `reports_guns/`.
 
 ### Требования
-- Node.js (проверено на v24)
-- Браузер Chromium для Playwright лежит в папке проекта **`pw-browsers`** (а не в системной).
-  Все `.bat` задают `PLAYWRIGHT_BROWSERS_PATH=...\pw-browsers` перед запуском node.
-  Переустановить браузер при необходимости (из папки проекта):
-  ```
-  set PLAYWRIGHT_BROWSERS_PATH=%cd%\pw-browsers
-  npx playwright install chromium
-  ```
+- **Node.js ≥ 18** (проверено на v24) + npm
+- **Chromium для Playwright** (~500 МБ) — ставится автоматически при `npm ci`/`npm install` (postinstall).
+  Путь к браузерам: переменная `PLAYWRIGHT_BROWSERS_PATH`, если задана (например, в Docker-образе это `/ms-playwright`),
+  иначе локальная папка проекта `pw-browsers` (её задают все `.bat`). Панель использует то же правило.
+- `.bat`-файлы — только для Windows; на Linux/macOS используйте команды `node ...` ниже.
 
 ### Установка на новой машине
+
+**Windows (проще всего):** двойной клик по `Открыть панель.bat` — сам выполнит `npm ci` и установку Chromium при первом запуске.
+
+**Любая ОС, вручную:**
 ```
-git clone https://github.com/v1nkore/steamdt-cs2-tracker
-cd steamdt-cs2-tracker
-npm ci
-set PLAYWRIGHT_BROWSERS_PATH=%cd%\pw-browsers
-npx playwright install chromium
+git clone https://github.com/v1nkore/cs2-market-tools
+cd cs2-market-tools/steamdt-cs2-tracker
+npm ci                    # Chromium скачается автоматически (postinstall)
+node ui_server.mjs        # панель на http://localhost:4317
 ```
-Дальше — любой `.bat` или `node scrape.mjs`. Папки `data/`, `reports/` создаются сами.
+На Windows перед `npm ci` можно задать `set PLAYWRIGHT_BROWSERS_PATH=%cd%\pw-browsers`, чтобы браузер лёг в папку проекта (как делают `.bat`); без этого он попадёт в общесистемный кэш Playwright — панель это тоже понимает через ту же переменную окружения.
+
+Дальше — любой `.bat`, панель или `node scrape.mjs`. Папки `data/`, `reports/` создаются сами.
 
 ### Запуск в Docker
 
-Нужен Node.js + Playwright с браузером Chromium — в контейнере это всё уже собрано в образе:
+Нужен Node.js + Playwright с браузером Chromium — в контейнере это всё уже собрано в образе (браузеры в `/ms-playwright`, панель подхватывает их автоматически):
 
 ```
 docker build -t steamdt-cs2-tracker .
+# bash/macOS/Linux:
 docker run -p 4317:4317 -v "$(pwd)/data:/app/data" -v "$(pwd)/reports:/app/reports" steamdt-cs2-tracker
+# Windows cmd: -v "%cd%/data:/app/data" ...   PowerShell: -v "${PWD}/data:/app/data" ...
 ```
 
-Панель откроется на `http://localhost:4317`. Тома для `data/` и `reports/` — чтобы собранные данные и отчёты не терялись между перезапусками контейнера. Для пушек аналогично примонтируйте `data_guns/` и `reports_guns/`.
+Панель откроется на `http://localhost:4317`. Тома для `data/` и `reports/` — чтобы собранные данные и отчёты не терялись между перезапусками контейнера. Для пушек аналогично примонтируйте `data_guns/` и `reports_guns/`. Кнопка «Открыть отчёт» в контейнере не сработает (нет браузера на хосте) — открывайте `reports/index.html` из примонтированной папки. С датацентровых/VPN IP антибот SteamDT может срабатывать чаще.
 
 **Важно про историю:** собранные данные (`data/`, `data_guns/`, отчёты) в git
 не хранятся — это личные суммы. Между машинами история едет только через
