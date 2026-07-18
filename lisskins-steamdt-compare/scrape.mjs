@@ -42,51 +42,86 @@ async function scrapeLisSkins(page) {
   let usdRate = null;
   let pageNum = 1;
   let lastPage = 1;
-  while (pageNum <= lastPage) {
-    const url = LIST_URL + (LIST_URL.includes('?') ? '&' : '?') + 'page=' + pageNum;
-    let loaded = false;
-    for (let attempt = 1; attempt <= 3 && !loaded; attempt++) {
-      try {
-        await page.goto(pageNum === 1 ? LIST_URL : url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        // ВАЖНО: options — третьим аргументом (второй — это arg для функции)
-        await page.waitForFunction(() => {
-          const v = window.__NUXT__ && window.__NUXT__.state && window.__NUXT__.state['$svue-query'];
-          return v && v.queries && v.queries.some(q => q.queryKey && q.queryKey[0] === 'skins' && q.state && q.state.data && q.state.data.data && q.state.data.data.length);
-        }, undefined, { timeout: 45000 });
-        loaded = true;
-      } catch (e) {
-        if (attempt === 3) {
-          const info = await page.evaluate(() => ({
-            title: document.title,
-            text: ((document.body && document.body.innerText) || '').replace(/\s+/g, ' ').slice(0, 200),
-          })).catch(() => null);
-          throw new Error(
-            `lis-skins не отдал данные за 45с (страница ${pageNum}, 3 попытки). ` +
-            `Возможно, антибот проверяет ваш IP или сеть медленная — попробуйте нажать кнопку ещё раз через минуту. ` +
-            `Содержимое страницы: ${JSON.stringify(info)}`
-          );
-        }
-        progress({ stage: 'lis-skins', msg: `страница ${pageNum} не загрузилась, повтор ${attempt + 1}/3...` });
-        await page.waitForTimeout(5000 * attempt);
+  const CHALLENGE_RE = /Один момент|Just a moment|провер\w* безопасности|Checking your browser|cf-chl|challenge/i;
+  // ВАЖНО: у waitForFunction options — третьим аргументом (второй — это arg для функции)
+  const waitForSkinsPage = (n, timeout) => page.waitForFunction((n) => {
+    const v = window.__NUXT__ && window.__NUXT__.state && window.__NUXT__.state['$svue-query'];
+    if (!v || !v.queries) return false;
+    // при SPA-навигации каждая страница — отдельная запись кэша ['skins', {...}]
+    return v.queries.some(q => q.queryKey && q.queryKey[0] === 'skins' &&
+      q.state && q.state.data && q.state.data.data && q.state.data.data.length &&
+      q.state.data.meta && q.state.data.meta.current_page === n);
+  }, n, { timeout });
+  const pageInfo = () => page.evaluate(() => ({
+    title: document.title,
+    text: ((document.body && document.body.innerText) || '').replace(/\s+/g, ' ').slice(0, 200),
+  })).catch(() => null);
+
+  // Полную загрузку документа антибот может встретить заглушкой (в headless она не
+  // проходит), поэтому документ грузим ОДИН раз, а по страницам пагинации ходим
+  // кликами внутри SPA — это внутренние API-запросы сайта, заглушка на них не срабатывает.
+  let loaded = false;
+  for (let attempt = 1; attempt <= 4 && !loaded; attempt++) {
+    try {
+      await page.goto(LIST_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await waitForSkinsPage(1, 45000);
+      loaded = true;
+    } catch (e) {
+      const info = await pageInfo();
+      const isChallenge = info && CHALLENGE_RE.test(info.title + ' ' + info.text);
+      if (attempt === 4) {
+        throw new Error(
+          `lis-skins не отдал данные (4 попытки${isChallenge ? ', упирается в антибот-проверку' : ''}). ` +
+          `Подождите пару минут и нажмите кнопку ещё раз. Содержимое страницы: ${JSON.stringify(info)}`
+        );
       }
+      progress({ stage: 'lis-skins', msg: isChallenge ? `антибот-проверка, повтор ${attempt + 1}/4 через ${8 * attempt}с...` : `страница не загрузилась, повтор ${attempt + 1}/4...` });
+      await page.waitForTimeout(8000 * attempt);
     }
-    const chunk = await page.evaluate(() => {
-      const v = window.__NUXT__.state['$svue-query'];
-      const q = v.queries.find(q => q.queryKey[0] === 'skins');
-      const cur = v.queries.find(q => q.queryKey[0] === 'currencies');
-      const rub = cur && cur.state.data.data.find(c => c.name === 'rub');
-      return {
-        meta: q.state.data.meta,
-        usdRate: rub ? Number(rub.rate) : null,
-        items: q.state.data.data.map(it => ({
-          id: it.skin.id,
-          name: it.skin.name,
-          url: 'https://lis-skins.com/ru/market/csgo/' + it.skin.url + '/',
-          qty: it.similar_count || 0,
-          lis_usd: it.final_withdrawal_price,
-        })),
-      };
-    });
+  }
+
+  const mapItems = (arr) => arr.map(it => ({
+    id: it.skin.id,
+    name: it.skin.name,
+    url: 'https://lis-skins.com/ru/market/csgo/' + it.skin.url + '/',
+    qty: it.similar_count || 0,
+    lis_usd: it.final_withdrawal_price,
+  }));
+
+  while (pageNum <= lastPage) {
+    let chunk;
+    if (pageNum > 1) {
+      // Страница 1 приходит с SSR; дальше НЕ делаем goto (антибот-заглушка ловит полные
+      // загрузки документа и в headless не проходит), а кликаем «следующая страница» в SPA
+      // и перехватываем её собственный API-ответ /api/v2/obtained-skins.
+      const respPromise = page.waitForResponse(
+        r => r.url().includes('/api/v2/obtained-skins') && r.url().includes('page=' + pageNum) && r.status() === 200,
+        { timeout: 45000 }
+      );
+      respPromise.catch(() => {}); // страховка от unhandled rejection, если клик упадёт раньше
+      const clicked = await page.evaluate(() => {
+        const next = document.querySelector('a[rel="next"]');
+        if (next) { next.click(); return true; }
+        return false;
+      });
+      if (!clicked) throw new Error(`не нашёл кнопку следующей страницы (страница ${pageNum} из ${lastPage})`);
+      const json = await (await respPromise).json();
+      if (!json || !json.data) throw new Error(`пустой ответ API на странице ${pageNum}`);
+      chunk = { meta: json.meta, usdRate: null, items: mapItems(json.data) };
+    } else {
+      chunk = await page.evaluate(() => {
+        const v = window.__NUXT__.state['$svue-query'];
+        const q = v.queries.find(q => q.queryKey[0] === 'skins');
+        const cur = v.queries.find(q => q.queryKey[0] === 'currencies');
+        const rub = cur && cur.state.data.data.find(c => c.name === 'rub');
+        return {
+          meta: q.state.data.meta,
+          usdRate: rub ? Number(rub.rate) : null,
+          raw: q.state.data.data,
+        };
+      });
+      chunk.items = mapItems(chunk.raw);
+    }
     usdRate = chunk.usdRate || usdRate;
     lastPage = (chunk.meta && chunk.meta.last_page) || 1;
     if (lastPage > 25) {
@@ -98,6 +133,7 @@ async function scrapeLisSkins(page) {
     rows.push(...chunk.items);
     progress({ stage: 'lis-skins', msg: `страница ${pageNum}/${lastPage}`, done: rows.length });
     pageNum++;
+    if (pageNum <= lastPage) await page.waitForTimeout(2500);
   }
   // дедуп по имени (одно имя = одна строка сравнения)
   const seen = new Set();
@@ -118,6 +154,7 @@ async function scrapeSteamdt(page, names) {
                (r.request().postData() || '').includes(JSON.stringify(name).slice(1, -1)),
           { timeout: 45000 }
         );
+        respPromise.catch(() => {}); // страховка от unhandled rejection, если goto упадёт раньше
         await page.goto('https://www.steamdt.com/en/mkt?search=' + encodeURIComponent(name), {
           waitUntil: 'domcontentloaded', timeout: 60000,
         });
