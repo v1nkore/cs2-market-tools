@@ -141,14 +141,25 @@ const ALL_ROWS = computeRows();
 
 function fillFilter(selectId, values) {
   const sel = document.getElementById(selectId);
+  const prev = sel.value;
+  while (sel.options.length > 1) sel.remove(1); // оставляем только «Все ...»
   [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b)).forEach(v => {
     const o = document.createElement('option');
     o.value = v; o.textContent = v;
     sel.appendChild(o);
   });
+  // сохранить выбор, если он всё ещё доступен, иначе сбросить на «Все»
+  sel.value = [...sel.options].some(o => o.value === prev) ? prev : '';
 }
 fillFilter('cat-filter', ALL_ROWS.map(r => r.category));
-fillFilter('rar-filter', ALL_ROWS.map(r => r.rarity));
+
+// редкости зависят от выбранной категории
+function refreshRarityFilter() {
+  const cat = document.getElementById('cat-filter').value;
+  const src = cat ? ALL_ROWS.filter(r => r.category === cat) : ALL_ROWS;
+  fillFilter('rar-filter', src.map(r => r.rarity));
+}
+refreshRarityFilter();
 
 function renderStats(rows) {
   const sumLis = rows.reduce((a, r) => a + r.lis, 0);
@@ -198,7 +209,7 @@ function applyFilterSort() {
 }
 
 document.getElementById('search').addEventListener('input', applyFilterSort);
-document.getElementById('cat-filter').addEventListener('change', applyFilterSort);
+document.getElementById('cat-filter').addEventListener('change', () => { refreshRarityFilter(); applyFilterSort(); });
 document.getElementById('rar-filter').addEventListener('change', applyFilterSort);
 document.getElementById('sort-select').addEventListener('change', applyFilterSort);
 const SERVER_MODE = location.protocol.startsWith('http');
