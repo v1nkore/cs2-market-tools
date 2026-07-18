@@ -88,26 +88,81 @@ async function scrapeLisSkins(page) {
     lis_usd: it.final_withdrawal_price,
   }));
 
+  // Постоянный сборщик API-ответов пагинации: не теряет ответ, даже если он пришёл
+  // раньше/позже, чем мы начали его ждать.
+  const apiPages = new Map();
+  page.on('response', (r) => {
+    if (r.url().includes('/api/v2/obtained-skins') && r.status() === 200) {
+      r.json().then(j => { if (j && j.meta && j.data) apiPages.set(j.meta.current_page, j); }).catch(() => {});
+    }
+  });
+
+  // Дождаться гидрации Vue: до неё клик по пагинации не перехватывается роутером
+  // и превращается в полную навигацию (которую ловит антибот-заглушка).
+  await page.waitForFunction(() => {
+    const el = document.querySelector('#__nuxt');
+    return el && el.__vue_app__ !== undefined;
+  }, undefined, { timeout: 20000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+
+  // Данные страницы N после клика: либо API-ответ SPA, либо (если всё же случилась
+  // полная навигация) свежий SSR-стейт нового документа.
+  const grabPage = async (n) => {
+    const deadline = Date.now() + 45000;
+    while (Date.now() < deadline) {
+      if (apiPages.has(n)) {
+        const j = apiPages.get(n);
+        return { meta: j.meta, usdRate: null, items: mapItems(j.data) };
+      }
+      const ssr = await page.evaluate((n) => {
+        const v = window.__NUXT__ && window.__NUXT__.state && window.__NUXT__.state['$svue-query'];
+        if (!v || !v.queries) return null;
+        const q = v.queries.find(q => q.queryKey && q.queryKey[0] === 'skins' &&
+          q.state && q.state.data && q.state.data.data && q.state.data.data.length &&
+          q.state.data.meta && q.state.data.meta.current_page === n);
+        return q ? { meta: q.state.data.meta, raw: q.state.data.data } : null;
+      }, n).catch(() => null);
+      if (ssr) return { meta: ssr.meta, usdRate: null, items: mapItems(ssr.raw) };
+      await page.waitForTimeout(700);
+    }
+    return null;
+  };
+
   while (pageNum <= lastPage) {
     let chunk;
     if (pageNum > 1) {
       // Страница 1 приходит с SSR; дальше НЕ делаем goto (антибот-заглушка ловит полные
       // загрузки документа и в headless не проходит), а кликаем «следующая страница» в SPA
       // и перехватываем её собственный API-ответ /api/v2/obtained-skins.
-      const respPromise = page.waitForResponse(
-        r => r.url().includes('/api/v2/obtained-skins') && r.url().includes('page=' + pageNum) && r.status() === 200,
-        { timeout: 45000 }
-      );
-      respPromise.catch(() => {}); // страховка от unhandled rejection, если клик упадёт раньше
-      const clicked = await page.evaluate(() => {
-        const next = document.querySelector('a[rel="next"]');
-        if (next) { next.click(); return true; }
-        return false;
-      });
-      if (!clicked) throw new Error(`не нашёл кнопку следующей страницы (страница ${pageNum} из ${lastPage})`);
-      const json = await (await respPromise).json();
-      if (!json || !json.data) throw new Error(`пустой ответ API на странице ${pageNum}`);
-      chunk = { meta: json.meta, usdRate: null, items: mapItems(json.data) };
+      chunk = null;
+      for (let attempt = 1; attempt <= 3 && !chunk; attempt++) {
+        const clicked = await page.evaluate((n) => {
+          const next = document.querySelector('a[rel="next"]');
+          if (next) { next.click(); return 'next'; }
+          const byNum = [...document.querySelectorAll('a')].find(a => (a.getAttribute('href') || '').includes('page=' + n));
+          if (byNum) { byNum.click(); return 'num'; }
+          return null;
+        }, pageNum).catch(() => null);
+        if (!clicked) throw new Error(`не нашёл кнопку следующей страницы (страница ${pageNum} из ${lastPage})`);
+        chunk = await grabPage(pageNum);
+        if (!chunk && attempt < 3) {
+          const info = await pageInfo();
+          const isChallenge = info && CHALLENGE_RE.test(info.title + ' ' + info.text);
+          progress({ stage: 'lis-skins', msg: `страница ${pageNum}: нет данных (${isChallenge ? 'антибот' : 'таймаут'}), повтор ${attempt + 1}/3...` });
+          if (isChallenge) {
+            // заглушка — вернёмся на список полной загрузкой и продолжим кликами
+            await page.goto(LIST_URL, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
+            await waitForSkinsPage(1, 45000).catch(() => {});
+            await page.waitForTimeout(3000);
+          } else {
+            await page.waitForTimeout(5000);
+          }
+        }
+      }
+      if (!chunk) {
+        const info = await pageInfo();
+        throw new Error(`не удалось получить страницу ${pageNum} из ${lastPage} (3 попытки). Содержимое страницы: ${JSON.stringify(info)}`);
+      }
     } else {
       chunk = await page.evaluate(() => {
         const v = window.__NUXT__.state['$svue-query'];
