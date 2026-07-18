@@ -15,7 +15,7 @@ export async function build(dataPath = path.join(__dirname, 'data.json')) {
 
   const compactRows = data.rows
     .filter(r => r.steam_rub != null || r.buff_rub != null || r.youpin_rub != null)
-    .map(r => [String(r.id), r.name, r.url, r.qty, r.lis_rub, r.steam_rub ?? 0, r.buff_rub ?? 0, r.youpin_rub ?? 0]);
+    .map(r => [String(r.id), r.name, r.url, r.qty, r.lis_rub, r.steam_rub ?? 0, r.buff_rub ?? 0, r.youpin_rub ?? 0, r.category || '', r.rarity || '']);
 
   const dataLine = 'const DATA = ' + JSON.stringify({
     usd_rate: data.usd_rate, cny_rate: data.cny_rate, rows: compactRows,
@@ -39,7 +39,7 @@ export async function build(dataPath = path.join(__dirname, 'data.json')) {
   ws.addRow([`Список: ${data.listUrl}`]);
   ws.addRow(['Курс USD→RUB', data.usd_rate, '', 'Курс CNY→RUB', data.cny_rate]);
   ws.addRow([]);
-  const header = ws.addRow(['Скин', 'Кол-во', 'LIS-SKINS $', 'LIS-SKINS ₽', 'Steam ₽', 'BUFF ₽', 'YouPin ₽', 'Лучшая SteamDT ₽', 'Разница ₽', 'Разница %']);
+  const header = ws.addRow(['Скин', 'Кол-во', 'LIS-SKINS $', 'LIS-SKINS ₽', 'Steam ₽', 'BUFF ₽', 'YouPin ₽', 'Лучшая SteamDT ₽', 'Разница ₽', 'Разница %', 'Категория', 'Редкость']);
   header.font = { bold: true };
   const first = 6;
   data.rows.forEach((r, i) => {
@@ -51,10 +51,11 @@ export async function build(dataPath = path.join(__dirname, 'data.json')) {
       { formula: `MIN(E${n}:G${n})` },
       { formula: `H${n}-D${n}` },
       { formula: `IF(D${n}=0,"",(H${n}-D${n})/D${n})` },
+      r.category || '', r.rarity || '',
     ]);
   });
   ws.getColumn(1).width = 50;
-  for (const c of [2, 3, 4, 5, 6, 7, 8, 9, 10]) ws.getColumn(c).width = 14;
+  for (const c of [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) ws.getColumn(c).width = 14;
   for (let i = 0; i < data.rows.length; i++) ws.getCell(first + i, 10).numFmt = '0.0%';
   await wb.xlsx.writeFile(path.join(__dirname, 'comparison.xlsx'));
 }

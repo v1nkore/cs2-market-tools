@@ -80,13 +80,18 @@ async function scrapeLisSkins(page) {
     }
   }
 
-  const mapItems = (arr) => arr.map(it => ({
-    id: it.skin.id,
-    name: it.skin.name,
-    url: 'https://lis-skins.com/ru/market/csgo/' + it.skin.url + '/',
-    qty: it.similar_count || 0,
-    lis_usd: it.final_withdrawal_price,
-  }));
+  const mapItems = (arr) => arr.map(it => {
+    const t = it.tag_manager_data || {};
+    return {
+      id: it.skin.id,
+      name: it.skin.name,
+      url: 'https://lis-skins.com/ru/market/csgo/' + it.skin.url + '/',
+      qty: it.similar_count || 0,
+      lis_usd: it.final_withdrawal_price,
+      category: t.item_category2 || null,
+      rarity: t.item_category3 || null,
+    };
+  });
 
   // Постоянный сборщик API-ответов пагинации: не теряет ответ, даже если он пришёл
   // раньше/позже, чем мы начали его ждать.

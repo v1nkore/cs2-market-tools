@@ -87,6 +87,8 @@
 
 <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">
   <input id="search" type="text" placeholder="Поиск по названию" style="flex:1;min-width:160px;" />
+  <select id="cat-filter" style="min-width:150px;"><option value="">Все категории</option></select>
+  <select id="rar-filter" style="min-width:150px;"><option value="">Все редкости</option></select>
   <select id="sort-select" style="min-width:220px;">
     <option value="lis-desc">Сорт.: LIS-SKINS ₽ (дороже сверху)</option>
     <option value="lis-asc">Сорт.: LIS-SKINS ₽ (дешевле сверху)</option>
@@ -101,6 +103,8 @@
     <thead>
       <tr style="position:sticky;top:0;background:var(--surface-2);z-index:1;">
         <th style="text-align:left;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Скин</th>
+        <th style="text-align:left;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Категория</th>
+        <th style="text-align:left;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Редкость</th>
         <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Кол-во</th>
         <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">LIS-SKINS ₽</th>
         <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Steam ₽</th>
@@ -126,14 +130,25 @@ const fmtPct = (n) => (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
 
 function computeRows() {
   return DATA.rows.map(r => {
-    const [id, name, url, qty, lis, steam, buff, youpin] = r;
+    const [id, name, url, qty, lis, steam, buff, youpin, category, rarity] = r;
     const best = Math.min(steam, buff, youpin);
     const bestLabel = best === steam ? 'Steam' : (best === buff ? 'BUFF' : 'YouPin');
     const diff = ((best - lis) / lis) * 100;
-    return {id, name, url, qty, lis, steam, buff, youpin, best, bestLabel, diff};
+    return {id, name, url, qty, lis, steam, buff, youpin, best, bestLabel, diff, category: category || '', rarity: rarity || ''};
   });
 }
 const ALL_ROWS = computeRows();
+
+function fillFilter(selectId, values) {
+  const sel = document.getElementById(selectId);
+  [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b)).forEach(v => {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = v;
+    sel.appendChild(o);
+  });
+}
+fillFilter('cat-filter', ALL_ROWS.map(r => r.category));
+fillFilter('rar-filter', ALL_ROWS.map(r => r.rarity));
 
 function renderStats(rows) {
   const sumLis = rows.reduce((a, r) => a + r.lis, 0);
@@ -154,6 +169,8 @@ function renderTable(rows) {
     const diffColor = r.diff >= 0 ? 'color:var(--text-success);' : 'color:var(--text-danger);';
     return `<tr style="${rowBg}">
       <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);white-space:nowrap;"><a href="${r.url}" target="_blank" rel="noopener" style="color:var(--text-primary);text-decoration:none;">${r.name}</a> <a href="https://www.steamdt.com/en/cs2/${encodeURIComponent(r.name)}?tab=trend&type=charts" target="_blank" rel="noopener" title="Открыть предмет на SteamDT" style="color:var(--text-muted);font-size:11px;text-decoration:none;margin-left:4px;">SteamDT&nbsp;↗</a></td>
+      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);white-space:nowrap;">${r.category || '—'}</td>
+      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);white-space:nowrap;">${r.rarity || '—'}</td>
       <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;color:var(--text-secondary);">${r.qty}</td>
       <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;">${fmt(r.lis)}</td>
       <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;${r.bestLabel==='Steam'?'font-weight:600;':''}">${fmt(r.steam)}</td>
@@ -166,8 +183,11 @@ function renderTable(rows) {
 
 function applyFilterSort() {
   const q = document.getElementById('search').value.trim().toLowerCase();
+  const cat = document.getElementById('cat-filter').value;
+  const rar = document.getElementById('rar-filter').value;
   const sortMode = document.getElementById('sort-select').value;
-  let rows = ALL_ROWS.filter(r => r.name.toLowerCase().includes(q));
+  let rows = ALL_ROWS.filter(r => r.name.toLowerCase().includes(q) &&
+    (!cat || r.category === cat) && (!rar || r.rarity === rar));
   if (sortMode === 'lis-desc') rows.sort((a, b) => b.lis - a.lis);
   else if (sortMode === 'lis-asc') rows.sort((a, b) => a.lis - b.lis);
   else if (sortMode === 'diff-desc') rows.sort((a, b) => b.diff - a.diff);
@@ -178,6 +198,8 @@ function applyFilterSort() {
 }
 
 document.getElementById('search').addEventListener('input', applyFilterSort);
+document.getElementById('cat-filter').addEventListener('change', applyFilterSort);
+document.getElementById('rar-filter').addEventListener('change', applyFilterSort);
 document.getElementById('sort-select').addEventListener('change', applyFilterSort);
 const SERVER_MODE = location.protocol.startsWith('http');
 const btn = document.getElementById('refresh-btn');
