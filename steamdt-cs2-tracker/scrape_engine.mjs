@@ -36,12 +36,28 @@ const RESTART_EVERY = 400;      // reopen browser context periodically (memory h
 const SAVE_EVERY = 50;
 const ITEM_TIMEOUT = 45000;
 
+// Разбор почасового ряда type-trend: [ts, ценаCN, лотыCN, ценаSteam, лотыSteam,
+// цена сделки, сделок за час, 存世量]. Возвращает агрегаты по датам сайта (Пекин).
+// Старая ручка /api/item/trade/v1/overview/today с ~17.07.2026 всегда отвечает
+// «environment abnormal» и SPA её больше не вызывает — sold теперь только отсюда.
+function trendByDay(rows) {
+  const byDay = {};
+  for (const r of rows || []) {
+    const d = siteDate(new Date((+r[0]) * 1000));
+    const day = (byDay[d] ??= { sold: 0, turnover: 0, priceCN: null, priceSteam: null });
+    day.sold += (+r[6] || 0);
+    day.turnover += (+r[5] || 0) * (+r[6] || 0);
+    if (r[1] != null) day.priceCN = +r[1];      // последняя цена дня
+    if (r[3] != null) day.priceSteam = +r[3];
+  }
+  return byDay;
+}
+
 // In-page fetch of both payloads for one item. Runs in the page's JS context, so it
 // reuses the real browser session (cookies + TLS fingerprint) and passes anti-bot.
 async function viaFetch(page, deviceId, mhn) {
-  return page.evaluate(async ({ mhn, dev }) => {
+  const r = await page.evaluate(async ({ mhn, dev }) => {
     const Hp = { 'content-type': 'application/json', 'access-token': 'undefined', 'language': 'en_US', 'x-app-version': '1.0.0', 'x-currency': 'CNY', 'x-device': '1', 'x-device-id': dev };
-    const Hg = { 'access-token': 'undefined', 'language': 'en_US', 'x-app-version': '1.0.0', 'x-currency': 'CNY', 'x-device': '1', 'x-device-id': dev };
     const isAbn = (j) => (j && j.errorMsg || '').includes('abnormal');
     const pf = (list, p) => { const x = (list || []).find(i => i.platform === p); return x && x.price > 0 ? x.price : null; };
     try {
@@ -51,26 +67,32 @@ async function viaFetch(page, deviceId, mhn) {
       const list = ij.data?.sellingPriceList || [];
       const buff = pf(list, 'buff'), youpin = pf(list, 'youpin'), c5 = pf(list, 'c5'), steam = pf(list, 'steam');
       const market = [buff, youpin, c5].filter(x => x != null);
-      const oj = await (await fetch('/api/item/trade/v1/overview/today?timestamp=' + Date.now() + '&itemId=' + itemId, { headers: Hg })).json();
-      if (!oj.success) return { err: isAbn(oj) ? 'ABN' : 'ov', itemId };
-      const soldCN = oj.data?.overview?.transactionCount ?? 0, soldSteam = oj.data?.steamOverview?.transactionCount ?? 0;
-      return { itemId, rec: {
-        soldToday: soldCN + soldSteam, soldCN, soldSteam,
-        turnoverToday: (oj.data?.overview?.transactionAmount ?? 0) + (oj.data?.steamOverview?.transactionAmount ?? 0),
+      const tj = await (await fetch('/api/user/steam/type-trend/v2/item/details?timestamp=' + Date.now(), {
+        method: 'POST', headers: Hp,
+        body: JSON.stringify({ platform: 'ALL', typeDay: 1, dateType: 4, specialStyle: '', timestamp: String(Date.now()), itemId }),
+      })).json();
+      if (!tj.success) return { err: isAbn(tj) ? 'ABN' : 'trend', itemId };
+      return { itemId, trend: tj.data, prices: {
         price: market.length ? Math.min(...market) : null, priceSteam: steam, priceBuff: buff, priceYoupin: youpin,
       } };
     } catch (e) { return { err: 'exc' }; }
   }, { mhn, dev: deviceId });
+  if (r.err) return r;
+  const days = trendByDay(r.trend);
+  const today = days[siteDate()] || { sold: 0, turnover: 0 };
+  return { itemId: r.itemId, days, rec: {
+    soldToday: today.sold, turnoverToday: Math.round(today.turnover * 100) / 100, ...r.prices,
+  } };
 }
 
 // Proven fallback: navigate to the card; the SPA itself fires the (anti-bot-passing)
-// requests and we read the responses.
+// requests and we read the responses. SPA грузит type-trend на каждой карточке.
 async function viaNav(page, mhn) {
-  let overview = null, detail = null;
+  let trend = null, detail = null;
   const onResp = async (resp) => {
     const u = resp.url();
     try {
-      if (u.includes('/api/item/trade/v1/overview/today')) { const j = await resp.json(); if (j.success) overview = j.data; }
+      if (u.includes('/api/user/steam/type-trend/v2/item/details')) { const j = await resp.json(); if (j.success) trend = j.data; }
       else if (u.includes('/api/user/skin/v1/item?')) { const j = await resp.json(); if (j.success) detail = j.data; }
     } catch {}
   };
@@ -78,20 +100,20 @@ async function viaNav(page, mhn) {
   try {
     await page.goto('https://www.steamdt.com/en/cs2/' + encodeURIComponent(mhn), { waitUntil: 'domcontentloaded', timeout: 45000 });
     const deadline = Date.now() + 18000;
-    while (Date.now() < deadline && !overview) await sleep(280); // resolve as soon as sold arrives; prices are best-effort
-    if (overview && !detail) { const d2 = Date.now() + 3000; while (Date.now() < d2 && !detail) await sleep(200); }
+    while (Date.now() < deadline && !trend) await sleep(280); // resolve as soon as trend arrives; prices are best-effort
+    if (trend && !detail) { const d2 = Date.now() + 3000; while (Date.now() < d2 && !detail) await sleep(200); }
   } catch {} finally { page.off('response', onResp); }
-  if (!overview) return null;
+  if (!trend) return null;
   const pf = (list, p) => { const x = (list || []).find(i => i.platform === p); return x && x.price > 0 ? x.price : null; };
   const list = detail?.sellingPriceList || [];
   const buff = pf(list, 'buff'), youpin = pf(list, 'youpin'), c5 = pf(list, 'c5'), steam = pf(list, 'steam');
   const market = [buff, youpin, c5].filter(x => x != null);
-  const soldCN = overview.overview?.transactionCount ?? 0, soldSteam = overview.steamOverview?.transactionCount ?? 0;
-  return {
-    soldToday: soldCN + soldSteam, soldCN, soldSteam,
-    turnoverToday: (overview.overview?.transactionAmount ?? 0) + (overview.steamOverview?.transactionAmount ?? 0),
+  const days = trendByDay(trend);
+  const today = days[siteDate()] || { sold: 0, turnover: 0 };
+  return { days, rec: {
+    soldToday: today.sold, turnoverToday: Math.round(today.turnover * 100) / 100,
     price: market.length ? Math.min(...market) : null, priceSteam: steam, priceBuff: buff, priceYoupin: youpin,
-  };
+  } };
 }
 
 export async function runDailyScrape({ root, dataDir, items, label, itemMeta, buildReports, fresh = false }) {
@@ -111,6 +133,24 @@ export async function runDailyScrape({ root, dataDir, items, label, itemMeta, bu
   else if (alreadyDone) console.log(`Уже собрано сегодня: ${alreadyDone}. Осталось: ${todo.length}.`);
 
   const save = () => { history.days[today] = { scrapedAt, data: dayData }; writeFileSync(histPath, JSON.stringify(history, null, 2)); };
+
+  // Бэкфилл прошлых дат из 7-дневного ряда type-trend: заполняем только дыры
+  // (дни, где по этой позиции данных нет) — живую историю никогда не перетираем.
+  let backfilled = 0;
+  const backfill = (mhn, days) => {
+    for (const [d, agg] of Object.entries(days)) {
+      if (d >= today) continue;
+      const day = (history.days[d] ??= { scrapedAt: `backfill ${scrapedAt}`, data: {} });
+      day.data ??= {};
+      if (mhn in day.data) continue;
+      day.data[mhn] = {
+        soldToday: agg.sold, turnoverToday: Math.round(agg.turnover * 100) / 100,
+        price: agg.priceCN, priceSteam: agg.priceSteam, priceBuff: null, priceYoupin: null,
+        soldDate: d, scrapedAt, backfilled: true,
+      };
+      backfilled++;
+    }
+  };
   if (todo.length === 0) { console.log(`День ${today} уже собран полностью (${alreadyDone}/${items.length}).`); buildReports(root); return; }
 
   const profileDir = join(DATA_DIR, 'browser-profile');
@@ -127,8 +167,10 @@ export async function runDailyScrape({ root, dataDir, items, label, itemMeta, bu
   await openCtx();
   const failed = [];
   let mode = deviceId ? 'fetch' : 'nav';   // need a device-id to attempt fetch
+  if (!deviceId) console.log('deviceId не найден — работаю только через навигацию');
   let gap = START_GAP, consecAbn = 0, navProbeIn = NAV_PROBE_EVERY;
   let done = 0, fastCount = 0, navCount = 0;
+  const errStats = {};   // причины отказов fetch-пути — для диагностики
 
   for (const it of todo) {
     const mhn = it.marketHashName;
@@ -136,14 +178,14 @@ export async function runDailyScrape({ root, dataDir, items, label, itemMeta, bu
 
     if (mode === 'fetch') {
       let r; try { r = await withTimeout(viaFetch(page, deviceId, mhn), ITEM_TIMEOUT); } catch { r = { err: 'exc' }; }
-      if (r.rec) { rec = r.rec; gotByFetch = true; fastCount++; consecAbn = 0; gap = Math.max(MIN_GAP, gap - 10); if (r.itemId) it._itemId = r.itemId; }
-      else if (r.err === 'ABN') { consecAbn++; gap = Math.min(MAX_GAP, Math.round(gap * 1.8)); }
-      // item/ov/exc errors: leave rec null -> nav fallback handles this item
+      if (r.rec) { rec = r.rec; backfill(mhn, r.days); gotByFetch = true; fastCount++; consecAbn = 0; gap = Math.max(MIN_GAP, gap - 10); if (r.itemId) it._itemId = r.itemId; }
+      else { errStats[r.err || '?'] = (errStats[r.err || '?'] || 0) + 1; if (r.err === 'ABN') { consecAbn++; gap = Math.min(MAX_GAP, Math.round(gap * 1.8)); } }
+      // item/trend/exc errors: leave rec null -> nav fallback handles this item
     }
 
     if (!rec) {
-      try { rec = await withTimeout(viaNav(page, mhn), ITEM_TIMEOUT); } catch { rec = null; }
-      if (rec) navCount++;
+      let n; try { n = await withTimeout(viaNav(page, mhn), ITEM_TIMEOUT); } catch { n = null; }
+      if (n) { rec = n.rec; backfill(mhn, n.days); navCount++; }
     }
 
     done++;
@@ -169,7 +211,8 @@ export async function runDailyScrape({ root, dataDir, items, label, itemMeta, bu
   save();
   try { await ctx.close(); } catch {}
   if (failed.length) { console.log(`не собрано: ${failed.length}`); writeFileSync(join(DATA_DIR, `failed_${today}.json`), JSON.stringify(failed, null, 2)); }
-  console.log(`через fetch: ${fastCount} · через навигацию: ${navCount}`);
+  console.log(`через fetch: ${fastCount} · через навигацию: ${navCount}` + (backfilled ? ` · бэкфилл прошлых дней: ${backfilled} записей` : ''));
+  if (Object.keys(errStats).length) console.log('отказы fetch-пути:', JSON.stringify(errStats));
   buildReports(root);
   console.log(`Готово. Собрано ${items.length - failed.length}/${items.length}.`);
 }
