@@ -99,7 +99,7 @@ async function viaNav(page, mhn) {
   page.on('response', onResp);
   try {
     await page.goto('https://www.steamdt.com/en/cs2/' + encodeURIComponent(mhn), { waitUntil: 'domcontentloaded', timeout: 45000 });
-    const deadline = Date.now() + 18000;
+    const deadline = Date.now() + 38000; // под нагрузкой карточка иногда отвечает медленно (было 18с — отсюда точечные таймауты)
     while (Date.now() < deadline && !trend) await sleep(280); // resolve as soon as trend arrives; prices are best-effort
     if (trend && !detail) { const d2 = Date.now() + 3000; while (Date.now() < d2 && !detail) await sleep(200); }
   } catch {} finally { page.off('response', onResp); }

@@ -70,9 +70,13 @@ function spawnOnce(job, fresh) {
   proc.stderr.on('data', (buf) => { st.lastErr = ((st.lastErr || '') + buf.toString()).slice(-2000); onData(buf); });
   proc.on('exit', (code) => {
     st.proc = null;
-    const done = Math.max(collectedToday(job), st.live);
+    // завершение считаем по РЕАЛЬНО сохранённым позициям, а не по счётчику прогресса
+    // (счётчик доходит до total, даже если часть позиций упала в таймаут — тогда нужно
+    // возобновиться и добрать недостающие, а не рапортовать «готово»)
+    const saved = collectedToday(job);
+    const done = Math.max(saved, st.live);
     if (st.stop) { st.status = 'остановлено'; st.running = false; st.endedAt = Date.now(); return; }
-    if (done >= st.total && st.total > 0) { st.status = 'готово'; st.live = st.total; st.running = false; st.endedAt = Date.now(); return; }
+    if (saved >= st.total && st.total > 0) { st.status = 'готово'; st.live = st.total; st.running = false; st.endedAt = Date.now(); return; }
     // быстрый краш без прогресса — не жжём попытки, а сразу показываем причину
     const ranMs = Date.now() - st.spawnAt;
     st.quickFails = (ranMs < 8000 && done <= startedDone) ? (st.quickFails || 0) + 1 : 0;
