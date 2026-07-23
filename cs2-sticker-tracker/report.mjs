@@ -29,6 +29,9 @@ th,td{padding:8px 10px;border-bottom:1px solid var(--bd);text-align:right;white-
 th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--card)}
 thead th{position:sticky;top:0;background:var(--card2);cursor:pointer;font-weight:600;z-index:2}
 thead th:first-child{z-index:3}
+thead th.sorted{color:var(--acc)}
+thead th.sorted[data-dir=asc]::after{content:' ▲';font-size:10px}
+thead th.sorted[data-dir=desc]::after{content:' ▼';font-size:10px}
 tbody tr:hover td{background:var(--card2)}
 .grp td{background:#222a36;color:var(--acc);font-weight:700;text-align:left}
 .tag{display:inline-block;background:var(--card2);border:1px solid var(--bd);color:var(--mut);border-radius:6px;padding:1px 7px;font-size:11px}
@@ -45,12 +48,18 @@ function filt(){var q=(document.getElementById('q')||{}).value||'';q=q.toLowerCa
    if(r.classList.contains('grp')){r.style.display='';return;}
    var t=r.getAttribute('data-t')||'',n=(r.getAttribute('data-n')||'').toLowerCase();
    r.style.display=((!q||n.indexOf(q)>=0)&&(!sel||t===sel))?'':'none';});}
-function sortT(th){var tb=th.closest('table'),idx=[].indexOf.call(th.parentNode.children,th);
- var num=th.getAttribute('data-num')==='1';var dir=th.getAttribute('data-dir')==='asc'?-1:1;th.setAttribute('data-dir',dir===1?'desc':'asc');
- var rows=[].slice.call(tb.querySelectorAll('tbody tr')).filter(function(r){return !r.classList.contains('grp');});
+// Трёхтактная сортировка: 1-й клик — по возрастанию, 2-й — по убыванию, 3-й — сброс к исходному порядку.
+function sortT(th){var tb=th.closest('table'),idx=[].indexOf.call(th.parentNode.children,th),tbody=tb.querySelector('tbody');
+ if(!tb._orig){tb._orig=[].slice.call(tbody.querySelectorAll('tr'));}
+ var st=th.getAttribute('data-dir')||'';var next=st===''?'asc':(st==='asc'?'desc':'');
+ [].forEach.call(tb.querySelectorAll('thead th'),function(h){h.removeAttribute('data-dir');h.classList.remove('sorted');});
+ if(next===''){tb._orig.forEach(function(r){tbody.appendChild(r);});return;}
+ th.setAttribute('data-dir',next);th.classList.add('sorted');
+ var num=th.getAttribute('data-num')==='1',dir=next==='asc'?1:-1;
+ var rows=[].slice.call(tbody.querySelectorAll('tr')).filter(function(r){return !r.classList.contains('grp');});
  rows.sort(function(a,b){var x=a.children[idx].getAttribute('data-v')||a.children[idx].innerText;var y=b.children[idx].getAttribute('data-v')||b.children[idx].innerText;
   if(num){x=parseFloat(x)||0;y=parseFloat(y)||0;return (x-y)*dir;}return x.localeCompare(y)*dir;});
- var tbody=tb.querySelector('tbody');rows.forEach(function(r){tbody.appendChild(r);});}
+ rows.forEach(function(r){tbody.appendChild(r);});}
 `;
 
 function page(title, body, extraJs = '') {
