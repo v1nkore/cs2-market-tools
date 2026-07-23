@@ -285,6 +285,7 @@ document.addEventListener('click', e=>{
       while(true){ await new Promise(r=>setTimeout(r,2500)); let s; try{ s=await (await fetch('/api/status')).json(); }catch{ continue; }
         if(s.error){ btn.textContent='Ошибка: '+s.error; btn.disabled=false; return; }
         if(!s.running && s.stage==='done'){ location.reload(); return; }
+        if(s.stage==='install'){ btn.textContent = s.msg || 'Ставлю браузер…'; continue; }
         btn.textContent = `Сбор: ${s.done||0}${s.total?'/'+s.total:''}`;
       }
     }catch(e){ btn.textContent='Сервер недоступен'; btn.disabled=false; }

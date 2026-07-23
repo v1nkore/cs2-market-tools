@@ -10,6 +10,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 import { build } from './build.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,10 +31,16 @@ function progress(obj) {
 }
 
 async function newBrowser() {
-  return chromium.launch({
-    headless: true,
-    args: ['--disable-blink-features=AutomationControlled'],
-  });
+  const opts = { headless: true, args: ['--disable-blink-features=AutomationControlled'] };
+  try {
+    return await chromium.launch(opts);
+  } catch (e) {
+    // самоисцеление: бинаря Playwright нет или ревизия не совпала (после обновления пакета)
+    if (!/Executable doesn't exist|playwright install|chrome-headless-shell|browserType\.launch/i.test(String(e))) throw e;
+    progress({ stage: 'install', msg: 'ставлю браузер Playwright (разово, ~1–2 мин)…' });
+    execSync('npx playwright install chromium', { stdio: 'inherit', cwd: __dirname });
+    return await chromium.launch(opts);
+  }
 }
 
 async function scrapeLisSkins(page) {
