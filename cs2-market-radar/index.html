@@ -30,8 +30,13 @@
   thead th{position:sticky;top:0;background:var(--card2);z-index:1;cursor:pointer;user-select:none;color:var(--mut);font-weight:600}
   thead th:hover{color:var(--tx)}
   thead th.sorted{color:var(--tx)}
+  thead th.nosort{cursor:default}
+  thead th.nosort:hover{color:var(--mut)}
   thead th .sar{color:var(--acc);font-size:11px;margin-left:2px}
   thead th .pr{color:var(--mut);font-size:9px;font-weight:700;vertical-align:super;margin-left:1px}
+  .ic{cursor:help;color:var(--mut);font-size:11px;font-weight:400;margin-left:3px}
+  .ic:hover{color:var(--acc)}
+  .tip{position:fixed;z-index:100;max-width:280px;background:var(--card2);border:1px solid var(--bd);color:var(--tx);font-size:11px;font-weight:400;line-height:1.5;white-space:normal;padding:8px 10px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.45);pointer-events:none;display:none}
   tbody tr:hover{background:var(--card2)}
   a{color:var(--acc);text-decoration:none}
   a.mut{color:var(--mut);font-size:11px}
@@ -115,12 +120,20 @@ const opts = (sel, vals, keepAll) => {
   sel.value = [...sel.options].some(o=>o.value===prev) ? prev : '';
 };
 
+// Умный поиск: запрос разбивается на слова, каждое слово должно встречаться в названии
+// (порядок и разделители «-», «|», «(» не важны). Пусто → совпадает всё.
+function matchSearch(name){
+  const toks = el('search').value.toLowerCase().split(/\s+/).filter(Boolean);
+  if(!toks.length) return true;
+  const hay = name.toLowerCase();
+  return toks.every(t => hay.includes(t));
+}
+
 // каскад: опции каждого фильтра считаются по строкам, прошедшим ОСТАЛЬНЫЕ фильтры
 function activeFilters(except){
-  const q = el('search').value.trim().toLowerCase();
   const cat = el('f-cat').value, rar = el('f-rar').value, vr = el('f-var').value, qu = el('f-qual').value;
   return ALL.filter(r =>
-    (except==='search' || !q || r.name.toLowerCase().includes(q)) &&
+    (except==='search' || matchSearch(r.name)) &&
     (except==='cat' || !cat || r.category===cat) &&
     (except==='rar' || !rar || r.rarity===rar) &&
     (except==='var' || !vr || r.variant===vr) &&
@@ -145,17 +158,17 @@ const COLS = () => {
   const p = P[period];
   return [
     {k:'name', sid:'name', t:'Предмет', l:true, get:r=>r.name},
-    {k:'category', sid:'category', t:'Категория', l:true, get:r=>r.category},
-    {k:'rarity', sid:'rarity', t:'Редкость', l:true, get:r=>r.rarity},
-    {k:'variant', sid:'variant', t:'Износ/финиш', l:true, get:r=>r.variant||'—'},
-    {k:'price', sid:'price', t:'Цена ¥', get:r=>r.price, fmt:fmt1},
-    {k:p.price, sid:'pdiff', t:'Δцена', get:r=>r[p.price], fmt:pct, sign:true},
-    {k:'supply', sid:'supply', t:'Лоты', get:r=>r.sellNums, fmt:fmt},
-    {k:p.supply, sid:'sdiff', t:'Δлоты', get:r=>r[p.supply], fmt:pct, sign:true},
-    {k:p.trades, sid:'trades', t:'Сделок', get:r=>r[p.trades], fmt:fmt},
-    {k:'_idx', sid:'idx', t:'Индекс', get:r=>r._idx, fmt:fmt1},
-    {k:p.turn, sid:'turn', t:'Оборот ¥', get:r=>r[p.turn], fmt:fmt},
-    {k:'hotRankChange', sid:'hot', t:'Δпопул.', get:r=>r.hotRankChange, fmt:fmt, sign:true},
+    {k:'category', sid:'category', t:'Категория', l:true, nosort:true, get:r=>r.category},
+    {k:'rarity', sid:'rarity', t:'Редкость', l:true, nosort:true, get:r=>r.rarity},
+    {k:'variant', sid:'variant', t:'Износ/финиш', l:true, nosort:true, get:r=>r.variant||'—'},
+    {k:'price', sid:'price', t:'Цена ¥', get:r=>r.price, fmt:fmt1, info:'Текущая минимальная цена продажи среди площадок, в юанях (¥).'},
+    {k:p.price, sid:'pdiff', t:'Δцена', get:r=>r[p.price], fmt:pct, sign:true, info:'Изменение цены за выбранный период (24ч/3д/7д/30д), в процентах.'},
+    {k:'supply', sid:'supply', t:'Лоты', get:r=>r.sellNums, fmt:fmt, info:'Сколько лотов сейчас выставлено на продажу.'},
+    {k:p.supply, sid:'sdiff', t:'Δлоты', get:r=>r[p.supply], fmt:pct, sign:true, info:'Изменение числа лотов за период: минус — предложение сократилось, плюс — выросло.'},
+    {k:p.trades, sid:'trades', t:'Сделок', get:r=>r[p.trades], fmt:fmt, info:'Число сделок (продаж) за выбранный период.'},
+    {k:'_idx', sid:'idx', t:'Индекс', get:r=>r._idx, fmt:fmt1, info:'Индекс всплеска спроса: сделки сегодня ÷ среднесуточные за 30 дней. Значение ≥3 — аномальный спрос.'},
+    {k:p.turn, sid:'turn', t:'Оборот ¥', get:r=>r[p.turn], fmt:fmt, info:'Оборот в деньгах за период: сумма всех сделок, в юанях (¥).'},
+    {k:'hotRankChange', sid:'hot', t:'Δпопул.', get:r=>r.hotRankChange, fmt:fmt, sign:true, info:'Изменение места в рейтинге популярности: на сколько позиций предмет поднялся (плюс) или опустился (минус).'},
   ];
 };
 
@@ -216,6 +229,8 @@ function render(){
   const cols=COLS(), rows=currentRows();
   const es = effectiveSort();
   el('head').innerHTML = cols.map(c=>{
+    const info = c.info ? ` <span class="ic" data-tip="${c.info.replace(/"/g,'&quot;')}">ⓘ</span>` : '';
+    if(c.nosort) return `<th class="${c.l?'l':''} nosort">${c.t}${info}</th>`;
     const i = es.findIndex(s=>s.sid===c.sid);
     let ind='';
     if(i>=0){
@@ -223,7 +238,7 @@ function render(){
       const prio = es.length>1 ? `<span class="pr">${i+1}</span>` : '';
       ind = ` <span class="sar">${arrow}</span>${prio}`;
     }
-    return `<th class="${c.l?'l':''}${i>=0?' sorted':''}" data-sid="${c.sid}">${c.t}${ind}</th>`;
+    return `<th class="${c.l?'l':''}${i>=0?' sorted':''}" data-sid="${c.sid}">${c.t}${info}${ind}</th>`;
   }).join('');
   el('body').innerHTML = rows.map(r=>{
     const an=anomalies(r);
@@ -246,6 +261,7 @@ el('only-anom').addEventListener('change', render);
 el('search').addEventListener('input', ()=>{ refreshFilterOptions(); render(); });
 for(const f of ['f-cat','f-rar','f-var','f-qual']) el(f).addEventListener('change', ()=>{ refreshFilterOptions(); render(); });
 document.addEventListener('click', e=>{
+  if(e.target.closest('.ic')) return;             // клик по инфо-иконке не сортирует
   const th=e.target.closest('#head th'); if(!th)return;
   const sid=th.dataset.sid; if(!sid)return;
   const i = sortSpec.findIndex(s=>s.sid===sid);
@@ -274,6 +290,18 @@ document.addEventListener('click', e=>{
     }catch(e){ btn.textContent='Сервер недоступен'; btn.disabled=false; }
   });
 })();
+
+// тултип инфо-иконок (position:fixed на body — не обрезается прокруткой таблицы)
+const tipEl = document.createElement('div'); tipEl.className='tip'; document.body.appendChild(tipEl);
+function placeTip(ic){
+  tipEl.textContent = ic.dataset.tip; tipEl.style.display='block';
+  const r=ic.getBoundingClientRect(), t=tipEl.getBoundingClientRect();
+  let left=Math.max(8, Math.min(r.left + r.width/2 - t.width/2, innerWidth - t.width - 8));
+  let top=r.bottom+6; if(top + t.height > innerHeight-8) top=r.top - t.height - 6;
+  tipEl.style.left=left+'px'; tipEl.style.top=top+'px';
+}
+document.addEventListener('mouseover', e=>{ const ic=e.target.closest('.ic'); if(ic) placeTip(ic); });
+document.addEventListener('mouseout', e=>{ if(e.target.closest('.ic')) tipEl.style.display='none'; });
 
 // старт
 refreshFilterOptions();
