@@ -1,8 +1,6 @@
 node_modules
 pw-browsers
 data
-data_guns
 reports
-reports_guns
 *.log
 .claude

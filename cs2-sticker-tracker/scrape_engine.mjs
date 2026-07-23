@@ -1,4 +1,4 @@
-// Shared daily-scrape engine for stickers and guns.
+// Daily-scrape engine for CS2 team Holo stickers (SteamDT «продано сегодня»).
 //
 // Strategy "B": instead of a full page navigation per item (heavy: loads the whole
 // SPA every time), keep ONE warmed page and call steamdt's own JSON endpoints via

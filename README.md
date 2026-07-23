@@ -10,7 +10,7 @@
 |---|---|---|
 | `cs2-market-radar` | Node.js ≥ 18, npm; Chromium (~500 МБ) ставится сам при `npm install` | образ `mcr.microsoft.com/playwright:v1.61.1-noble` (тянется сам) |
 | `lisskins-steamdt-compare` | Node.js ≥ 18, npm; Chromium (~500 МБ) ставится сам при `npm install` | образ `mcr.microsoft.com/playwright:v1.61.1-noble` (тянется сам) |
-| `steamdt-cs2-tracker` | Node.js ≥ 18, npm; Chromium ставится сам при `npm ci` | образ `mcr.microsoft.com/playwright:v1.60.0-noble` (тянется сам) |
+| `cs2-sticker-tracker` | Node.js ≥ 18, npm; Chromium ставится сам при `npm ci` | образ `mcr.microsoft.com/playwright:v1.60.0-noble` (тянется сам) |
 | `cs2-china-stats` | только браузер | не нужен |
 
 Общее: интернет-доступ к lis-skins.com / steamdt.com (для первых двух); `.bat`-файлы — только Windows, на Linux/macOS используйте команды `node ...`; с датацентровых/VPN IP антибот сайтов срабатывает чаще, чем с домашнего.
@@ -65,35 +65,34 @@ docker run -d --name lisskins-compare -p 8317:8317 -v "%cd%:/app" lisskins-steam
 
 ---
 
-### [`steamdt-cs2-tracker/`](steamdt-cs2-tracker/)
+### [`cs2-sticker-tracker/`](cs2-sticker-tracker/)
 
-Трекер показателя «продано сегодня» (Sold Today) для наклеек киберспортивных команд и популярных пушек — данные снимаются со SteamDT, копится история по дням, строятся HTML-отчёты (дашборд, сводная матрица по дням, снимок за конкретный день).
+Ежедневный трекер продаж командных **Holo-наклеек** CS2 со SteamDT: показатель «продано сегодня» (Sold Today) по наклейкам команд турниров, история по дням и HTML-отчёты (дашборд, сводная матрица по дням, снимок за конкретный день).
 
 **Запуск (Windows):** двойной клик по `Открыть панель.bat` → http://localhost:4317 (первый запуск сам ставит зависимости).
 
 **Запуск (любая ОС):**
 ```
-cd steamdt-cs2-tracker
+cd cs2-sticker-tracker
 npm ci               # Chromium скачается автоматически
 node ui_server.mjs   # панель на http://localhost:4317
 ```
 
 **Запуск из консоли без панели:**
 ```
-node scrape.mjs                      # полный сбор наклеек
+node scrape.mjs                      # полный сбор за сегодня
 node scrape.mjs --tournament austin  # только один турнир
 node report.mjs                      # пересобрать HTML-отчёты
-node scrape_guns.mjs                 # сбор пушек
 ```
 
 **Запуск в Docker:**
 ```
-cd steamdt-cs2-tracker
-docker build -t steamdt-cs2-tracker .
-docker run -p 4317:4317 -v "%cd%/data:/app/data" -v "%cd%/reports:/app/reports" steamdt-cs2-tracker
+cd cs2-sticker-tracker
+docker build -t cs2-sticker-tracker .
+docker run -p 4317:4317 -v "%cd%/data:/app/data" -v "%cd%/reports:/app/reports" cs2-sticker-tracker
 # PowerShell: ${PWD} вместо %cd%   bash: $(pwd)
 ```
-Тома для `data/` и `reports/` — чтобы история и отчёты не терялись между перезапусками (для пушек аналогично `data_guns/`, `reports_guns/`). Собранные данные в git не хранятся — свежий клон начинает историю с нуля.
+Тома для `data/` и `reports/` — чтобы история и отчёты не терялись между перезапусками. Собранные данные в git не хранятся — свежий клон начинает историю с нуля.
 
 ---
 
