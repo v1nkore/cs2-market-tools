@@ -8,6 +8,7 @@
 
 | Проект | Локальный запуск | Docker |
 |---|---|---|
+| `cs2-market-radar` | Node.js ≥ 18, npm; Chromium (~500 МБ) ставится сам при `npm install` | образ `mcr.microsoft.com/playwright:v1.61.1-noble` (тянется сам) |
 | `lisskins-steamdt-compare` | Node.js ≥ 18, npm; Chromium (~500 МБ) ставится сам при `npm install` | образ `mcr.microsoft.com/playwright:v1.61.1-noble` (тянется сам) |
 | `steamdt-cs2-tracker` | Node.js ≥ 18, npm; Chromium ставится сам при `npm ci` | образ `mcr.microsoft.com/playwright:v1.60.0-noble` (тянется сам) |
 | `cs2-china-stats` | только браузер | не нужен |
@@ -15,6 +16,30 @@
 Общее: интернет-доступ к lis-skins.com / steamdt.com (для первых двух); `.bat`-файлы — только Windows, на Linux/macOS используйте команды `node ...`; с датацентровых/VPN IP антибот сайтов срабатывает чаще, чем с домашнего.
 
 ## Проекты
+
+### [`cs2-market-radar/`](cs2-market-radar/)
+
+Дашборд активного рынка CS2 (~1000 позиций) по рейтингам SteamDT: что откупают, где обваливаются лоты, где скачет цена, на что идёт хайп. Каскадные фильтры (категория→редкость→износ/финиш→качество), переключение периода (24ч/3д/7д/30д) и **индексы аномалий** (всплеск сделок, обвал лотов, скачок цены, взлёт популярности). Тянет готовый агрегат вместо тысяч карточек — быстро и мимо дневного лимита SteamDT.
+
+**Запуск (Windows):** `Открыть панель.bat` → http://localhost:8319.
+
+**Запуск (любая ОС):**
+```
+cd cs2-market-radar
+npm install          # Chromium скачается автоматически
+node server.mjs      # панель на http://localhost:8319
+```
+
+**Docker:**
+```
+cd cs2-market-radar
+docker build -t cs2-market-radar .
+docker run -d --name cs2-radar -p 8319:8319 -v "%cd%:/app" cs2-market-radar
+# PowerShell: -v "${PWD}:/app"   bash: -v "$(pwd):/app"
+```
+Кнопка «Собрать заново» на панели пересобирает данные (~3-5 мин) и перезаписывает `index.html`/`data.json`.
+
+---
 
 ### [`lisskins-steamdt-compare/`](lisskins-steamdt-compare/)
 
