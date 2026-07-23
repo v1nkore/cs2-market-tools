@@ -29,6 +29,9 @@
   th:nth-child(1),td:nth-child(1),th.l,td.l{text-align:left}
   thead th{position:sticky;top:0;background:var(--card2);z-index:1;cursor:pointer;user-select:none;color:var(--mut);font-weight:600}
   thead th:hover{color:var(--tx)}
+  thead th.sorted{color:var(--tx)}
+  thead th .sar{color:var(--acc);font-size:11px;margin-left:2px}
+  thead th .pr{color:var(--mut);font-size:9px;font-weight:700;vertical-align:super;margin-left:1px}
   tbody tr:hover{background:var(--card2)}
   a{color:var(--acc);text-decoration:none}
   a.mut{color:var(--mut);font-size:11px}
@@ -141,22 +144,28 @@ const P = {
 const COLS = () => {
   const p = P[period];
   return [
-    {k:'name', t:'Предмет', l:true, get:r=>r.name},
-    {k:'category', t:'Категория', l:true, get:r=>r.category},
-    {k:'rarity', t:'Редкость', l:true, get:r=>r.rarity},
-    {k:'variant', t:'Износ/финиш', l:true, get:r=>r.variant||'—'},
-    {k:'price', t:'Цена ¥', get:r=>r.price, fmt:fmt1},
-    {k:p.price, t:'Δцена', get:r=>r[p.price], fmt:pct, sign:true},
-    {k:'supply', t:'Лоты', get:r=>r.sellNums, fmt:fmt},
-    {k:p.supply, t:'Δлоты', get:r=>r[p.supply], fmt:pct, sign:true},
-    {k:p.trades, t:'Сделок', get:r=>r[p.trades], fmt:fmt},
-    {k:'_idx', t:'Индекс', get:r=>r._idx, fmt:fmt1},
-    {k:p.turn, t:'Оборот ¥', get:r=>r[p.turn], fmt:fmt},
-    {k:'hotRankChange', t:'Δпопул.', get:r=>r.hotRankChange, fmt:fmt, sign:true},
+    {k:'name', sid:'name', t:'Предмет', l:true, get:r=>r.name},
+    {k:'category', sid:'category', t:'Категория', l:true, get:r=>r.category},
+    {k:'rarity', sid:'rarity', t:'Редкость', l:true, get:r=>r.rarity},
+    {k:'variant', sid:'variant', t:'Износ/финиш', l:true, get:r=>r.variant||'—'},
+    {k:'price', sid:'price', t:'Цена ¥', get:r=>r.price, fmt:fmt1},
+    {k:p.price, sid:'pdiff', t:'Δцена', get:r=>r[p.price], fmt:pct, sign:true},
+    {k:'supply', sid:'supply', t:'Лоты', get:r=>r.sellNums, fmt:fmt},
+    {k:p.supply, sid:'sdiff', t:'Δлоты', get:r=>r[p.supply], fmt:pct, sign:true},
+    {k:p.trades, sid:'trades', t:'Сделок', get:r=>r[p.trades], fmt:fmt},
+    {k:'_idx', sid:'idx', t:'Индекс', get:r=>r._idx, fmt:fmt1},
+    {k:p.turn, sid:'turn', t:'Оборот ¥', get:r=>r[p.turn], fmt:fmt},
+    {k:'hotRankChange', sid:'hot', t:'Δпопул.', get:r=>r.hotRankChange, fmt:fmt, sign:true},
   ];
 };
 
-let sortKey='_idx', sortDir=-1;
+// Мультиколоночная сортировка: упорядоченный список {sid, dir}. dir:1 — по возрастанию, -1 — по убыванию.
+// Клик по столбцу: нет в списке → добавить (возрастание) · есть по возрастанию → убывание · есть по убыванию → убрать.
+// Пока ручной сортировки нет (sortSpec пуст) — правит выбранный пресет. Первый ручной клик начинает сортировку с нуля.
+let sortSpec = [];
+const PRESET_MAP = {trade:['idx',-1], supply:['sdiff',1], pricejump:['pdiff',-1], hot:['hot',-1], trades:['trades',-1], turnover:['turn',-1]};
+function presetSort(){ const e = PRESET_MAP[el('preset').value] || ['idx',-1]; return [{sid:e[0], dir:e[1]}]; }
+const effectiveSort = () => sortSpec.length ? sortSpec : presetSort();
 
 function anomalies(r){
   const p=P[period]; const out=[];
@@ -170,15 +179,26 @@ function anomalies(r){
 function currentRows(){
   let rows = activeFilters(null);
   if(el('only-anom').checked) rows = rows.filter(r=>anomalies(r).length);
-  rows.sort((a,b)=>{ const av=a[sortKey]??-Infinity, bv=b[sortKey]??-Infinity; return (av<bv?-1:av>bv?1:0)*sortDir; });
+  const getters={}; for(const c of COLS()) getters[c.sid]=c.get;
+  const spec = effectiveSort().filter(s=>getters[s.sid]);
+  rows.sort((a,b)=>{
+    for(const {sid,dir} of spec){
+      const g=getters[sid]; const av=g(a), bv=g(b);
+      const am = av==null || av==='' || (typeof av==='number' && Number.isNaN(av));
+      const bm = bv==null || bv==='' || (typeof bv==='number' && Number.isNaN(bv));
+      if(am || bm){ if(am && bm) continue; return am ? 1 : -1; }  // пустые всегда в конце
+      if(typeof av==='string' || typeof bv==='string'){
+        const c=(''+av).localeCompare(''+bv,'ru'); if(c) return c*dir; continue;
+      }
+      if(av<bv) return -1*dir; if(av>bv) return 1*dir;
+    }
+    return 0;
+  });
   return rows;
 }
 
-function applyPreset(){
-  const v=el('preset').value; const p=P[period];
-  const map={trade:['_idx',-1], supply:[p.supply,1], pricejump:[p.price,-1], hot:['hotRankChange',-1], trades:[p.trades,-1], turnover:[p.turn,-1]};
-  [sortKey,sortDir]=map[v]||['_idx',-1];
-}
+// Выбор пресета сбрасывает ручную комбинацию — дальше сортировкой правит пресет.
+function applyPreset(){ sortSpec = []; }
 
 function renderKpis(rows){
   const p=P[period];
@@ -194,7 +214,17 @@ function renderKpis(rows){
 
 function render(){
   const cols=COLS(), rows=currentRows();
-  el('head').innerHTML = cols.map(c=>`<th class="${c.l?'l':''}" data-k="${c.k}">${c.t}${sortKey===c.k?(sortDir<0?' ▾':' ▴'):''}</th>`).join('');
+  const es = effectiveSort();
+  el('head').innerHTML = cols.map(c=>{
+    const i = es.findIndex(s=>s.sid===c.sid);
+    let ind='';
+    if(i>=0){
+      const arrow = es[i].dir<0 ? '▼' : '▲';
+      const prio = es.length>1 ? `<span class="pr">${i+1}</span>` : '';
+      ind = ` <span class="sar">${arrow}</span>${prio}`;
+    }
+    return `<th class="${c.l?'l':''}${i>=0?' sorted':''}" data-sid="${c.sid}">${c.t}${ind}</th>`;
+  }).join('');
   el('body').innerHTML = rows.map(r=>{
     const an=anomalies(r);
     const badges = an.map(a=>({trade:'<span class="badge b-trade">спрос</span>',supply:'<span class="badge b-supply">лоты</span>',price:'<span class="badge b-price">цена</span>',hot:'<span class="badge b-hot">хайп</span>'}[a])).join('');
@@ -206,16 +236,25 @@ function render(){
     }).join('')+`</tr>`;
   }).join('');
   renderKpis(rows);
-  el('foot').textContent = `Индекс сделок = сделки сегодня ÷ средние за 30д (порог аномалии ≥${TH.trade}×). Обвал лотов ≤${TH.supply}%, скачок цены ≥${TH.price}%, взлёт популярности ≥${TH.hot} мест. Данные SteamDT, цены в юанях (¥). Клик по заголовку — сортировка.`;
+  el('foot').textContent = `Индекс сделок = сделки сегодня ÷ средние за 30д (порог аномалии ≥${TH.trade}×). Обвал лотов ≤${TH.supply}%, скачок цены ≥${TH.price}%, взлёт популярности ≥${TH.hot} мест. Данные SteamDT, цены в юанях (¥). Клик по заголовку: 1-й — по возрастанию (▲), 2-й — по убыванию (▼), 3-й — снять. Клики по разным столбцам комбинируются (цифра — приоритет: сначала 1, потом 2…); пресет из списка заменяет ручную сортировку.`;
 }
 
 // события
-el('period-seg').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b)return; period=+b.dataset.p; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); applyPreset(); render(); });
+el('period-seg').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b)return; period=+b.dataset.p; [...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b)); render(); });
 el('preset').addEventListener('change', ()=>{ applyPreset(); render(); });
 el('only-anom').addEventListener('change', render);
 el('search').addEventListener('input', ()=>{ refreshFilterOptions(); render(); });
 for(const f of ['f-cat','f-rar','f-var','f-qual']) el(f).addEventListener('change', ()=>{ refreshFilterOptions(); render(); });
-el('head') && document.addEventListener('click', e=>{ const th=e.target.closest('#head th'); if(!th)return; const k=th.dataset.k; if(sortKey===k) sortDir=-sortDir; else {sortKey=k; sortDir=-1;} render(); });
+document.addEventListener('click', e=>{
+  const th=e.target.closest('#head th'); if(!th)return;
+  const sid=th.dataset.sid; if(!sid)return;
+  const i = sortSpec.findIndex(s=>s.sid===sid);
+  if(i<0) sortSpec.push({sid, dir:1});               // 1-й клик — по возрастанию (добавляем как след. ключ)
+  else if(sortSpec[i].dir===1) sortSpec[i].dir=-1;   // 2-й клик — по убыванию
+  else sortSpec.splice(i,1);                          // 3-й клик — убрать столбец из сортировки
+  el('preset').selectedIndex = -1;                   // ручная сортировка — снимаем выделение пресета
+  render();
+});
 
 // кнопка «Собрать заново»
 (function(){
