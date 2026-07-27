@@ -31,16 +31,29 @@ function progress(obj) {
 }
 
 async function newBrowser() {
-  const opts = { headless: true, args: ['--disable-blink-features=AutomationControlled'] };
-  try {
-    return await chromium.launch(opts);
-  } catch (e) {
-    // самоисцеление: бинаря Playwright нет или ревизия не совпала (после обновления пакета)
-    if (!/Executable doesn't exist|playwright install|chrome-headless-shell|browserType\.launch/i.test(String(e))) throw e;
-    progress({ stage: 'install', msg: 'ставлю браузер Playwright (разово, ~1–2 мин)…' });
-    execSync('npx playwright install chromium', { stdio: 'inherit', cwd: __dirname });
-    return await chromium.launch(opts);
+  // Антибот lis-skins режет ЛЮБОЙ headless: заголовок sec-ch-ua честно выдаёт
+  // "HeadlessChrome", и подмена userAgent это не скрывает. Поэтому запускаем
+  // обычный (headful) браузер, а окно уводим далеко за пределы экрана.
+  const args = ['--disable-blink-features=AutomationControlled', '--window-position=-32000,-32000'];
+  const tries = [
+    { headless: false, channel: 'chrome', args }, // системный Chrome — проходит проверку сразу
+    { headless: false, args },                    // запасной вариант: комплектный Chromium Playwright
+  ];
+  let lastErr;
+  for (const opts of tries) {
+    try {
+      return await chromium.launch(opts);
+    } catch (e) {
+      lastErr = e;
+      // самоисцеление: бинаря Playwright нет или ревизия не совпала (после обновления пакета)
+      if (!opts.channel && /Executable doesn't exist|playwright install|browserType\.launch/i.test(String(e))) {
+        progress({ stage: 'install', msg: 'ставлю браузер Playwright (разово, ~1–2 мин)…' });
+        execSync('npx playwright install chromium', { stdio: 'inherit', cwd: __dirname });
+        return await chromium.launch(opts);
+      }
+    }
   }
+  throw lastErr;
 }
 
 async function scrapeLisSkins(page) {
@@ -264,10 +277,11 @@ async function scrapeSteamdt(page, names) {
 async function main() {
   const browser = await newBrowser();
   try {
+    // userAgent НЕ подменяем: у headful-браузера он и так настоящий, а расхождение
+    // подменённого UA с заголовком sec-ch-ua — само по себе сигнал для антибота.
     const ctx = await browser.newContext({
       locale: 'ru-RU',
       viewport: { width: 1440, height: 900 },
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
     });
     const page = await ctx.newPage();
 
