@@ -1,0 +1,62 @@
+name: cs2-sticker-report
+
+on:
+  schedule:
+    # 05:00 UTC = 08:00 МСК ежедневно. GitHub cron иногда задерживается на пару минут.
+    - cron: "0 5 * * *"
+  workflow_dispatch: {}   # ручной запуск из вкладки Actions
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sticker-report
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: cs2-sticker-tracker
+    env:
+      # scrape.mjs жёстко использует ROOT/pw-browsers — ставим Chromium туда же.
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/cs2-sticker-tracker/pw-browsers
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: cs2-sticker-tracker/package-lock.json
+
+      # Кэшируем скачанный Chromium между запусками (сам браузер ~150 МБ).
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: cs2-sticker-tracker/pw-browsers
+          key: pw-${{ runner.os }}-${{ hashFiles('cs2-sticker-tracker/package-lock.json') }}
+
+      - name: Install deps
+        run: npm ci
+
+      # Гарантируем наличие Chromium (в PLAYWRIGHT_BROWSERS_PATH) + системные библиотеки.
+      - name: Install Chromium + OS deps
+        run: npx playwright install --with-deps chromium
+
+      # Собираем сегодняшний день; тренд SteamDT заодно докидывает прошлые ~7 дней.
+      - name: Scrape SteamDT (today)
+        run: node scrape.mjs
+
+      # Дайджест уходит даже при частичном/неуспешном сборе — тишина не должна
+      # означать «сломалось»: при пустых данных придёт явное ⚠️ со ссылкой на логи.
+      - name: Send Telegram digest
+        if: always()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOP_N: "20"
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node tg_report.mjs
