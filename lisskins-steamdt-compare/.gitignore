@@ -2,3 +2,4 @@ node_modules/
 pw-browsers/
 progress.json
 *.log
+.chrome-profile/

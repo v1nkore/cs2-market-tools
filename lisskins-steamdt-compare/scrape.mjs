@@ -4,9 +4,9 @@
 // страницы, SteamDT — перехватом ответа его собственного API при загрузке страницы поиска.
 //
 // Использование:
-//   node scrape.mjs [--url <lis-skins list url>] [--limit N] [--out data.json] [--no-build]
+//   node scrape.mjs [--from-site] [--url <lis-skins list url>] [--limit N] [--out data.json] [--no-build]
 
-import { chromium } from 'playwright';
+import { chromium } from 'patchright';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,31 +25,40 @@ const LIST_URL = arg('--url', DEFAULT_URL);
 const LIMIT = Number(arg('--limit', 0)) || 0;
 const OUT = arg('--out', path.join(__dirname, 'data.json'));
 const NO_BUILD = process.argv.includes('--no-build');
+// По умолчанию цены lis-skins берутся из публичного JSON-экспорта (без антибота),
+// а список избранного — из прошлого data.json. --from-site: как раньше, через
+// страницу списка в браузере (обновляет сам список), при антиботе — откат на экспорт.
+const FROM_SITE = process.argv.includes('--from-site');
+const EXPORT_URL = 'https://lis-skins.com/market_export_json/csgo.json';
+const CBR_URL = 'https://www.cbr-xml-daily.ru/daily_json.js';
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
 
 function progress(obj) {
   console.log('PROGRESS ' + JSON.stringify(obj));
 }
 
 async function newBrowser() {
-  // Антибот lis-skins режет ЛЮБОЙ headless: заголовок sec-ch-ua честно выдаёт
-  // "HeadlessChrome", и подмена userAgent это не скрывает. Поэтому запускаем
-  // обычный (headful) браузер, а окно уводим далеко за пределы экрана.
-  const args = ['--disable-blink-features=AutomationControlled', '--window-position=-32000,-32000'];
+  // Антибот lis-skins (Cloudflare Turnstile) режет ЛЮБОЙ headless и ловит следы
+  // CDP-автоматизации. Поэтому: patchright (скрывает CDP), системный Chrome,
+  // headful, ПОСТОЯННЫЙ профиль (.chrome-profile) — пройденная проверка живёт в
+  // cookie cf_clearance и не запрашивается заново при каждом запуске.
+  const profileDir = path.join(__dirname, '.chrome-profile');
+  const args = ['--disable-blink-features=AutomationControlled'];
+  const base = { headless: false, viewport: null, locale: 'ru-RU', args };
   const tries = [
-    { headless: false, channel: 'chrome', args }, // системный Chrome — проходит проверку сразу
-    { headless: false, args },                    // запасной вариант: комплектный Chromium Playwright
+    { ...base, channel: 'chrome' }, // системный Chrome — проходит проверку сразу
+    { ...base },                    // запасной вариант: комплектный Chromium
   ];
   let lastErr;
   for (const opts of tries) {
     try {
-      return await chromium.launch(opts);
+      return await chromium.launchPersistentContext(profileDir, opts);
     } catch (e) {
       lastErr = e;
-      // самоисцеление: бинаря Playwright нет или ревизия не совпала (после обновления пакета)
       if (!opts.channel && /Executable doesn't exist|playwright install|browserType\.launch/i.test(String(e))) {
         progress({ stage: 'install', msg: 'ставлю браузер Playwright (разово, ~1–2 мин)…' });
-        execSync('npx playwright install chromium', { stdio: 'inherit', cwd: __dirname });
-        return await chromium.launch(opts);
+        execSync('npx patchright install chromium', { stdio: 'inherit', cwd: __dirname });
+        return await chromium.launchPersistentContext(profileDir, opts);
       }
     }
   }
@@ -221,6 +230,45 @@ async function scrapeLisSkins(page) {
   return { rows: deduped, usdRate };
 }
 
+async function fetchJson(url, timeoutMs = 90000) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: ctl.signal });
+    if (!r.ok) throw new Error(`HTTP ${r.status} ${url}`);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+// Цены lis-skins из публичного экспорта: список избранного (имена, id, категория,
+// редкость) берём из прошлого data.json, свежие цену/количество — из экспорта,
+// курс USD→RUB — с ЦБ РФ (сайт свой курс без браузера не отдаёт).
+async function lisSkinsFromExport() {
+  const prevPath = fs.existsSync(OUT) ? OUT : path.join(__dirname, 'data.json');
+  if (!fs.existsSync(prevPath)) throw new Error('нет прошлого data.json со списком избранного — запустите с --from-site');
+  const prev = JSON.parse(fs.readFileSync(prevPath, 'utf-8'));
+  const favorites = prev.rows || [];
+  if (!favorites.length) throw new Error('в прошлом data.json пустой список избранного — запустите с --from-site');
+
+  progress({ stage: 'lis-skins', msg: `экспорт цен lis-skins (избранное из data.json: ${favorites.length})` });
+  const [exp, cbr] = await Promise.all([fetchJson(EXPORT_URL), fetchJson(CBR_URL, 20000)]);
+  const byName = new Map(exp.map(it => [it.name, it]));
+  const usdRate = cbr && cbr.Valute && cbr.Valute.USD ? Number(cbr.Valute.USD.Value) : null;
+
+  const rows = [];
+  const missing = [];
+  for (const f of favorites) {
+    const it = byName.get(f.name);
+    if (!it) { missing.push(f.name); continue; }
+    rows.push({
+      id: f.id, name: f.name, url: f.url, qty: it.count || 0, lis_usd: it.price,
+      category: f.category || null, rarity: f.rarity || null,
+    });
+  }
+  if (missing.length) progress({ stage: 'lis-skins', msg: `нет в экспорте (пропущено): ${missing.length} — ${missing.slice(0, 3).join('; ')}` });
+  return { rows, usdRate, source: 'export' };
+}
+
 async function scrapeSteamdt(page, names) {
   const prices = {};
   let cnyRate = null;
@@ -279,14 +327,22 @@ async function main() {
   try {
     // userAgent НЕ подменяем: у headful-браузера он и так настоящий, а расхождение
     // подменённого UA с заголовком sec-ch-ua — само по себе сигнал для антибота.
-    const ctx = await browser.newContext({
-      locale: 'ru-RU',
-      viewport: { width: 1440, height: 900 },
-    });
-    const page = await ctx.newPage();
+    const ctx = browser; // persistent context
+    const page = ctx.pages()[0] || await ctx.newPage();
 
-    let { rows, usdRate } = await scrapeLisSkins(page);
-    if (!usdRate) throw new Error('не удалось получить курс USD→RUB с lis-skins');
+    let rows, usdRate, source = 'site';
+    if (FROM_SITE) {
+      try {
+        ({ rows, usdRate } = await scrapeLisSkins(page));
+      } catch (e) {
+        if (!/антибот/i.test(String(e.message || e))) throw e;
+        progress({ stage: 'lis-skins', msg: 'антибот не пустил на страницу — беру цены из публичного экспорта' });
+        ({ rows, usdRate, source } = await lisSkinsFromExport());
+      }
+    } else {
+      ({ rows, usdRate, source } = await lisSkinsFromExport());
+    }
+    if (!usdRate) throw new Error('не удалось получить курс USD→RUB');
     if (LIMIT) rows = rows.slice(0, LIMIT);
     progress({ stage: 'lis-skins', msg: `собрано позиций: ${rows.length}, курс $ ${usdRate}` });
 
@@ -298,6 +354,7 @@ async function main() {
       generatedAt: new Date().toISOString(),
       listUrl: LIST_URL,
       usd_rate: usdRate,
+      lis_source: source,
       cny_rate: cnyRate,
       rows: rows.map(r => {
         const p = prices[r.name] || {};
