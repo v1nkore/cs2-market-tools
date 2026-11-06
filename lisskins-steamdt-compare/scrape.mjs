@@ -12,6 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import { build } from './build.mjs';
+import { parseLisRubRate, steamdtRubCookie } from './currency.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -30,7 +31,6 @@ const NO_BUILD = process.argv.includes('--no-build');
 // страницу списка в браузере (обновляет сам список), при антиботе — откат на экспорт.
 const FROM_SITE = process.argv.includes('--from-site');
 const EXPORT_URL = 'https://lis-skins.com/market_export_json/csgo.json';
-const CBR_URL = 'https://www.cbr-xml-daily.ru/daily_json.js';
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
 
 function progress(obj) {
@@ -240,20 +240,53 @@ async function fetchJson(url, timeoutMs = 90000) {
   } finally { clearTimeout(t); }
 }
 
-// Цены lis-skins из публичного экспорта: список избранного (имена, id, категория,
-// редкость) берём из прошлого data.json, свежие цену/количество — из экспорта,
-// курс USD→RUB — с ЦБ РФ (сайт свой курс без браузера не отдаёт).
-async function lisSkinsFromExport() {
-  const prevPath = fs.existsSync(OUT) ? OUT : path.join(__dirname, 'data.json');
-  if (!fs.existsSync(prevPath)) throw new Error('нет прошлого data.json со списком избранного — запустите с --from-site');
-  const prev = JSON.parse(fs.readFileSync(prevPath, 'utf-8'));
-  const favorites = prev.rows || [];
-  if (!favorites.length) throw new Error('в прошлом data.json пустой список избранного — запустите с --from-site');
+// LIS-SKINS конвертирует цены из USD по собственному курсу, который заметно
+// отличается от курса ЦБ. Берём именно его из официального Nuxt payload страницы.
+async function scrapeLisRubRate(page) {
+  progress({ stage: 'lis-skins', msg: 'получаю курс USD→RUB с LIS-SKINS' });
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await page.goto(LIST_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      const payload = page.locator('#__NUXT_DATA__');
+      await payload.waitFor({ state: 'attached', timeout: 45000 });
+      const rate = parseLisRubRate(await payload.textContent());
+      if (!rate) throw new Error('курс RUB отсутствует в Nuxt payload');
+      return rate;
+    } catch (e) {
+      if (attempt === 3) {
+        throw new Error(
+          'не удалось получить внутренний курс RUB с LIS-SKINS; ' +
+          'пройдите проверку Cloudflare в открывшемся окне Chrome и повторите сборку',
+          { cause: e },
+        );
+      }
+      progress({ stage: 'lis-skins', msg: `курс не получен, повтор ${attempt + 1}/3...` });
+      await page.waitForTimeout(5000 * attempt);
+    }
+  }
+}
 
-  progress({ stage: 'lis-skins', msg: `экспорт цен lis-skins (избранное из data.json: ${favorites.length})` });
-  const [exp, cbr] = await Promise.all([fetchJson(EXPORT_URL), fetchJson(CBR_URL, 20000)]);
+// Цены lis-skins из публичного экспорта: список избранного (имена, id, категория,
+// редкость) берём из прошлого data.json, свежие цену/количество — из экспорта.
+async function lisSkinsFromExport() {
+  // Источник списка: favorites.json (если есть) — явный список избранного; иначе
+  // строки прошлого data.json.
+  const favPath = path.join(__dirname, 'favorites.json');
+  let favorites, favSrc;
+  if (fs.existsSync(favPath)) {
+    favorites = JSON.parse(fs.readFileSync(favPath, 'utf-8')).items || [];
+    favSrc = 'favorites.json';
+  } else {
+    const prevPath = fs.existsSync(OUT) ? OUT : path.join(__dirname, 'data.json');
+    if (!fs.existsSync(prevPath)) throw new Error('нет ни favorites.json, ни прошлого data.json со списком избранного — запустите с --from-site');
+    favorites = JSON.parse(fs.readFileSync(prevPath, 'utf-8')).rows || [];
+    favSrc = 'data.json';
+  }
+  if (!favorites.length) throw new Error(`пустой список избранного (${favSrc}) — запустите с --from-site`);
+
+  progress({ stage: 'lis-skins', msg: `экспорт цен lis-skins (избранное из ${favSrc}: ${favorites.length})` });
+  const exp = await fetchJson(EXPORT_URL);
   const byName = new Map(exp.map(it => [it.name, it]));
-  const usdRate = cbr && cbr.Valute && cbr.Valute.USD ? Number(cbr.Valute.USD.Value) : null;
 
   const rows = [];
   const missing = [];
@@ -266,10 +299,11 @@ async function lisSkinsFromExport() {
     });
   }
   if (missing.length) progress({ stage: 'lis-skins', msg: `нет в экспорте (пропущено): ${missing.length} — ${missing.slice(0, 3).join('; ')}` });
-  return { rows, usdRate, source: 'export' };
+  return { rows, source: 'export' };
 }
 
 async function scrapeSteamdt(page, names) {
+  await page.context().addCookies([steamdtRubCookie()]);
   const prices = {};
   let cnyRate = null;
   let done = 0;
@@ -286,6 +320,13 @@ async function scrapeSteamdt(page, names) {
         await page.goto('https://www.steamdt.com/en/mkt?search=' + encodeURIComponent(name), {
           waitUntil: 'domcontentloaded', timeout: 60000,
         });
+        const selectedCurrency = await page.evaluate(() => {
+          const raw = document.cookie.split('; ').find(x => x.startsWith('SDT_MonetaryUnit='));
+          if (!raw) return null;
+          try { return JSON.parse(decodeURIComponent(raw.slice(raw.indexOf('=') + 1))).currency; }
+          catch { return null; }
+        });
+        if (selectedCurrency !== 'RUB') throw new Error(`SteamDT currency is ${selectedCurrency || 'unknown'}, expected RUB`);
         const resp = await respPromise;
         const json = await resp.json();
         const list = json && json.success && json.data && json.data.list;
@@ -330,21 +371,21 @@ async function main() {
     const ctx = browser; // persistent context
     const page = ctx.pages()[0] || await ctx.newPage();
 
-    let rows, usdRate, source = 'site';
+    const usdRate = await scrapeLisRubRate(page);
+    let rows, source = 'site';
     if (FROM_SITE) {
       try {
-        ({ rows, usdRate } = await scrapeLisSkins(page));
+        ({ rows } = await scrapeLisSkins(page));
       } catch (e) {
         if (!/антибот/i.test(String(e.message || e))) throw e;
         progress({ stage: 'lis-skins', msg: 'антибот не пустил на страницу — беру цены из публичного экспорта' });
-        ({ rows, usdRate, source } = await lisSkinsFromExport());
+        ({ rows, source } = await lisSkinsFromExport());
       }
     } else {
-      ({ rows, usdRate, source } = await lisSkinsFromExport());
+      ({ rows, source } = await lisSkinsFromExport());
     }
-    if (!usdRate) throw new Error('не удалось получить курс USD→RUB');
     if (LIMIT) rows = rows.slice(0, LIMIT);
-    progress({ stage: 'lis-skins', msg: `собрано позиций: ${rows.length}, курс $ ${usdRate}` });
+    progress({ stage: 'lis-skins', msg: `собрано позиций: ${rows.length}, курс LIS-SKINS $ ${usdRate}` });
 
     const { prices, cnyRate } = await scrapeSteamdt(page, rows.map(r => r.name));
     if (!cnyRate) throw new Error('не удалось получить курс CNY→RUB со SteamDT');
@@ -354,6 +395,7 @@ async function main() {
       generatedAt: new Date().toISOString(),
       listUrl: LIST_URL,
       usd_rate: usdRate,
+      usd_rate_source: 'lis-skins',
       lis_source: source,
       cny_rate: cnyRate,
       rows: rows.map(r => {

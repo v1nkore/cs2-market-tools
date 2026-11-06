@@ -35,20 +35,31 @@ export async function build(dataPath = path.join(__dirname, 'data.json')) {
   // Excel
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Сравнение цен');
-  ws.addRow([`Сравнение цен LIS-SKINS vs SteamDT (Steam/BUFF/YouPin), обновлено ${stamp}`]);
+  ws.addRow([`Сравнение цен LIS-SKINS vs Китай (BUFF/YouPin), обновлено ${stamp}`]);
   ws.addRow([`Список: ${data.listUrl}`]);
-  ws.addRow(['Курс USD→RUB', data.usd_rate, '', 'Курс CNY→RUB', data.cny_rate]);
+  ws.addRow(['Курс LIS-SKINS USD→RUB', data.usd_rate, '', 'Курс CNY→RUB', data.cny_rate]);
   ws.addRow([]);
-  const header = ws.addRow(['Скин', 'Кол-во', 'LIS-SKINS $', 'LIS-SKINS ₽', 'Steam ₽', 'BUFF ₽', 'YouPin ₽', 'Лучшая SteamDT ₽', 'Разница ₽', 'Разница %', 'Категория', 'Редкость']);
+  const header = ws.addRow(['Скин', 'Кол-во', 'LIS-SKINS $', 'LIS-SKINS ₽', 'Steam ₽', 'BUFF ₽', 'YouPin ₽', 'Лучшая Китай ₽', 'Разница ₽', 'Разница %', 'Категория', 'Редкость']);
   header.font = { bold: true };
   const first = 6;
-  data.rows.forEach((r, i) => {
+  const excelRows = [...data.rows].sort((a, b) => {
+    const china = r => {
+      const prices = [r.buff_rub, r.youpin_rub].filter(v => v != null && v > 0);
+      return prices.length ? Math.min(...prices) : null;
+    };
+    const diff = r => {
+      const bestChina = china(r);
+      return r.lis_rub && bestChina != null ? (bestChina - r.lis_rub) / r.lis_rub : -Infinity;
+    };
+    return diff(b) - diff(a);
+  });
+  excelRows.forEach((r, i) => {
     const n = first + i;
     ws.addRow([
       r.name, r.qty, r.lis_usd,
       { formula: `C${n}*$B$3` },
       r.steam_rub, r.buff_rub, r.youpin_rub,
-      { formula: `MIN(E${n}:G${n})` },
+      { formula: `MIN(F${n}:G${n})` },
       { formula: `H${n}-D${n}` },
       { formula: `IF(D${n}=0,"",(H${n}-D${n})/D${n})` },
       r.category || '', r.rarity || '',
@@ -56,7 +67,7 @@ export async function build(dataPath = path.join(__dirname, 'data.json')) {
   });
   ws.getColumn(1).width = 50;
   for (const c of [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) ws.getColumn(c).width = 14;
-  for (let i = 0; i < data.rows.length; i++) ws.getCell(first + i, 10).numFmt = '0.0%';
+  for (let i = 0; i < excelRows.length; i++) ws.getCell(first + i, 10).numFmt = '0.0%';
   await wb.xlsx.writeFile(path.join(__dirname, 'comparison.xlsx'));
 }
 

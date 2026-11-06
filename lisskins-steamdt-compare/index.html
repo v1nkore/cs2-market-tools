@@ -3,138 +3,190 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>LIS-SKINS vs SteamDT</title>
+<title>Сравнение цен CS2</title>
 <style>
   :root {
-    --surface-2: #ffffff;
-    --surface-1: #f5f5f4;
-    --surface-0: #ececea;
-    --text-primary: #0b0b0b;
-    --text-secondary: #52514e;
-    --text-muted: #898781;
-    --text-success: #27500a;
-    --text-danger: #791f1f;
-    --bg-success: #eaf3de;
-    --bg-danger: #fcebeb;
-    --border: rgba(11,11,11,0.12);
-    --radius: 8px;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --surface-2: #232322;
-      --surface-1: #1a1a19;
-      --surface-0: #121211;
-      --text-primary: #ffffff;
-      --text-secondary: #c3c2b7;
-      --text-muted: #898781;
-      --text-success: #97c459;
-      --text-danger: #f09595;
-      --bg-success: #173404;
-      --bg-danger: #501313;
-      --border: rgba(255,255,255,0.14);
-    }
+    color-scheme: dark;
+    --bg: #0b0f16;
+    --panel: #111722;
+    --panel-raised: #151d2a;
+    --panel-soft: #0f1520;
+    --text: #edf2f9;
+    --text-soft: #aab6c7;
+    --text-muted: #6f7d90;
+    --border: #222d3d;
+    --border-strong: #314057;
+    --accent: #7da2ff;
+    --accent-soft: rgba(125, 162, 255, .12);
+    --good: #67d6aa;
+    --good-soft: rgba(103, 214, 170, .12);
+    --bad: #ec9a9a;
+    --bad-soft: rgba(236, 154, 154, .1);
+    --warning: #e7c67a;
+    --radius: 14px;
+    --shadow: 0 18px 50px rgba(0, 0, 0, .24);
   }
   * { box-sizing: border-box; }
+  html { background: var(--bg); }
   body {
     margin: 0;
-    padding: 1.5rem;
-    background: var(--surface-0);
-    color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    min-width: 320px;
+    background:
+      radial-gradient(circle at 8% -8%, rgba(125,162,255,.12), transparent 28rem),
+      radial-gradient(circle at 92% 4%, rgba(103,214,170,.07), transparent 24rem),
+      var(--bg);
+    color: var(--text);
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 14px;
+    line-height: 1.45;
   }
-  .wrap { max-width: 1000px; margin: 0 auto; }
-  input, select, button {
-    font-family: inherit; font-size: 13px; height: 34px; border-radius: var(--radius);
-    border: 0.5px solid var(--border); background: var(--surface-2); color: var(--text-primary); padding: 0 10px;
+  button, input, select, textarea { font: inherit; }
+  button, input, select {
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    background: var(--panel-soft);
   }
-  button { cursor: pointer; }
-  button:hover { background: var(--surface-1); }
+  input, select { padding: 0 13px; outline: none; transition: border-color .16s, box-shadow .16s; }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  button { padding: 0 16px; cursor: pointer; font-weight: 650; transition: transform .16s, border-color .16s, background .16s; }
+  button:hover { transform: translateY(-1px); border-color: var(--border-strong); }
+  button:disabled { cursor: progress; opacity: .55; transform: none; }
   a { color: inherit; }
+  .app-shell { max-width: 1320px; margin: 0 auto; padding: 34px 28px 48px; }
+  .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .brand-mark {
+    display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px;
+    background: linear-gradient(145deg, #8aadff, #5c7ee0); color: #08101d; font-weight: 900; letter-spacing: -.04em;
+    box-shadow: 0 10px 30px rgba(92,126,224,.28);
+  }
+  .eyebrow { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+  h1 { margin: 2px 0 0; font-size: clamp(22px, 3vw, 31px); letter-spacing: -.035em; line-height: 1.1; }
+  .meta { color: var(--text-muted); font-size: 12px; text-align: right; max-width: 520px; }
+  .rebuild-card {
+    display: grid; grid-template-columns: minmax(260px, 1fr) auto; gap: 10px;
+    padding: 12px; margin-bottom: 16px; background: rgba(17,23,34,.82); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(14px);
+  }
+  .primary-button { background: var(--accent); border-color: transparent; color: #08101d; }
+  .primary-button:hover { background: #92b2ff; border-color: transparent; }
+  .status { grid-column: 1 / -1; padding: 9px 11px; border-radius: 9px; background: var(--accent-soft); color: #c9d8ff; font-size: 12px; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat-card { position: relative; overflow: hidden; min-height: 112px; padding: 17px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); }
+  .stat-card::after { content: ""; position: absolute; right: -28px; bottom: -44px; width: 110px; height: 110px; border-radius: 50%; background: var(--glow, var(--accent-soft)); filter: blur(4px); }
+  .stat-label { position: relative; z-index: 1; color: var(--text-muted); font-size: 12px; font-weight: 650; }
+  .stat-value { position: relative; z-index: 1; margin-top: 13px; font-size: 25px; line-height: 1; font-weight: 780; letter-spacing: -.035em; }
+  .toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) 190px 190px auto; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .sort-lock { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 13px; color: var(--text-soft); background: var(--panel-soft); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; white-space: nowrap; }
+  .sort-lock::before { content: "↓"; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; color: var(--good); background: var(--good-soft); font-weight: 900; }
+  .table-card { overflow: hidden; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .table-scroll { overflow: auto; max-height: 68vh; }
+  table { width: 100%; min-width: 980px; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+  thead { position: sticky; top: 0; z-index: 3; background: rgba(15,21,32,.97); backdrop-filter: blur(10px); }
+  th { padding: 12px 8px; color: var(--text-muted); border-bottom: 1px solid var(--border-strong); font-size: 10px; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; text-align: left; white-space: nowrap; }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td { padding: 10px 8px; border-bottom: 1px solid rgba(34,45,61,.72); color: var(--text-soft); white-space: nowrap; }
+  tbody tr { background: transparent; transition: background .14s; }
+  tbody tr:hover { background: rgba(125,162,255,.055); }
+  tbody tr:last-child td { border-bottom: 0; }
+  .rank { color: var(--text-muted); width: 38px; }
+  .skin-link { color: var(--text); font-weight: 680; text-decoration: none; }
+  .skin-link:hover { color: #bcd0ff; }
+  .external-link { margin-left: 7px; color: var(--text-muted); font-size: 10px; text-decoration: none; }
+  .external-link:hover { color: var(--accent); }
+  .tag { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-soft); background: rgba(255,255,255,.018); }
+  .price-lis { color: var(--text); font-weight: 730; }
+  .best-china { color: var(--good); font-weight: 760; }
+  .diff-pill { display: inline-flex; justify-content: center; min-width: 70px; padding: 5px 7px; border-radius: 8px; font-weight: 780; }
+  .diff-positive { color: var(--good); background: var(--good-soft); }
+  .diff-negative { color: var(--bad); background: var(--bad-soft); }
+  .empty { padding: 52px 20px; color: var(--text-muted); text-align: center; }
+  .footnote { margin: 12px 2px 0; color: var(--text-muted); font-size: 11px; line-height: 1.6; }
+  #prompt-box { grid-column: 1 / -1; display: none; width: 100%; min-height: 76px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel-soft); color: var(--text); resize: vertical; }
+  @media (max-width: 900px) {
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .toolbar { grid-template-columns: 1fr 1fr; }
+    .toolbar #search { grid-column: 1 / -1; }
+    .sort-lock { justify-content: center; }
+  }
+  @media (max-width: 620px) {
+    .app-shell { padding: 22px 14px 36px; }
+    .topbar { display: block; }
+    .meta { margin-top: 12px; text-align: left; }
+    .rebuild-card { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat-card { min-height: 96px; padding: 14px; }
+    .stat-value { font-size: 21px; }
+    .toolbar { grid-template-columns: 1fr; }
+    .toolbar #search { grid-column: auto; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-<div style="margin-bottom:12px;">
-  <div style="font-size:17px;font-weight:600;margin-bottom:2px;">Сравнение цен: LIS-SKINS vs SteamDT</div>
-  <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;" id="meta-line">23 позиций избранного · курс $ 86.57 ₽ · курс ¥ 12.21 ₽ · обновлено 07.11.2026 00:40</div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-    <input id="list-url" type="text" value="https://lis-skins.com/ru/market/cs2/?user_list_id=01kvbgbzhn0acjzykwfagmc96y" placeholder="Ссылка на список избранного lis-skins" style="flex:1;min-width:280px;" />
-    <button id="refresh-btn" style="white-space:nowrap;">Скопировать запрос для Claude</button>
-  </div>
-  <textarea id="prompt-box" readonly style="display:none;width:100%;margin-top:8px;height:64px;font-family:inherit;font-size:12px;padding:8px;border-radius:var(--radius);border:0.5px solid var(--border);background:var(--surface-2);color:var(--text-primary);"></textarea>
-  <div id="copy-status" style="font-size:12px;color:var(--text-secondary);margin-top:4px;display:none;"></div>
-</div>
+<main class="app-shell">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">LS</div>
+      <div>
+        <div class="eyebrow">Market intelligence</div>
+        <h1>Сравнение цен CS2</h1>
+      </div>
+    </div>
+    <div class="meta" id="meta-line">23 позиций избранного · курс $ 86.57 ₽ · курс ¥ 12.21 ₽ · обновлено 07.11.2026 00:40</div>
+  </header>
 
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px;">
-  <div style="background:var(--surface-1);border-radius:var(--radius);padding:0.75rem;">
-    <div style="font-size:12px;color:var(--text-secondary);">Позиций</div>
-    <div style="font-size:22px;font-weight:600;" id="stat-count">118</div>
-  </div>
-  <div style="background:var(--surface-1);border-radius:var(--radius);padding:0.75rem;">
-    <div style="font-size:12px;color:var(--text-secondary);">Сумма LIS-SKINS</div>
-    <div style="font-size:22px;font-weight:600;" id="stat-lis">-</div>
-  </div>
-  <div style="background:var(--surface-1);border-radius:var(--radius);padding:0.75rem;">
-    <div style="font-size:12px;color:var(--text-secondary);">Сумма лучшая на SteamDT</div>
-    <div style="font-size:22px;font-weight:600;" id="stat-best">-</div>
-  </div>
-  <div style="background:var(--surface-1);border-radius:var(--radius);padding:0.75rem;">
-    <div style="font-size:12px;color:var(--text-secondary);">Средняя разница</div>
-    <div style="font-size:22px;font-weight:600;" id="stat-diff">-</div>
-  </div>
-</div>
+  <section class="rebuild-card" aria-label="Обновление данных">
+    <input id="list-url" type="text" value="https://lis-skins.com/ru/market/cs2/?user_list_id=01kvbgbzhn0acjzykwfagmc96y" placeholder="Ссылка на список избранного LIS-SKINS" />
+    <button id="refresh-btn" class="primary-button">Скопировать запрос для Claude</button>
+    <textarea id="prompt-box" readonly></textarea>
+    <div id="copy-status" class="status" style="display:none;"></div>
+  </section>
 
-<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center;">
-  <input id="search" type="text" placeholder="Поиск по названию" style="flex:1;min-width:160px;" />
-  <select id="cat-filter" style="min-width:150px;"><option value="">Все категории</option></select>
-  <select id="rar-filter" style="min-width:150px;"><option value="">Все редкости</option></select>
-  <select id="sort-select" style="min-width:220px;">
-    <option value="lis-desc">Сорт.: LIS-SKINS ₽ (дороже сверху)</option>
-    <option value="lis-asc">Сорт.: LIS-SKINS ₽ (дешевле сверху)</option>
-    <option value="diff-desc">Сорт.: разница % (больше сверху)</option>
-    <option value="diff-asc">Сорт.: разница % (меньше сверху)</option>
-    <option value="name-asc">Сорт.: название A-Я</option>
-  </select>
-</div>
+  <section class="stats" aria-label="Сводка">
+    <article class="stat-card"><div class="stat-label">Позиций в выборке</div><div class="stat-value" id="stat-count">—</div></article>
+    <article class="stat-card"><div class="stat-label">Сумма на LIS-SKINS</div><div class="stat-value" id="stat-lis">—</div></article>
+    <article class="stat-card" style="--glow:var(--good-soft)"><div class="stat-label">Лучшая сумма в Китае</div><div class="stat-value" id="stat-best">—</div></article>
+    <article class="stat-card" style="--glow:var(--good-soft)"><div class="stat-label">Средний разрыв</div><div class="stat-value" id="stat-diff">—</div></article>
+  </section>
 
-<div style="border:0.5px solid var(--border);border-radius:var(--radius);overflow:auto;max-height:70vh;background:var(--surface-2);">
-  <table style="width:100%;border-collapse:collapse;font-size:12px;">
-    <thead>
-      <tr style="position:sticky;top:0;background:var(--surface-2);z-index:1;">
-        <th style="text-align:left;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Скин</th>
-        <th style="text-align:left;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Категория</th>
-        <th style="text-align:left;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Редкость</th>
-        <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Кол-во</th>
-        <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">LIS-SKINS ₽</th>
-        <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Steam ₽</th>
-        <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">BUFF ₽</th>
-        <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">YouPin ₽</th>
-        <th style="text-align:right;padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);font-weight:600;">Разница</th>
-      </tr>
-    </thead>
-    <tbody id="table-body"></tbody>
-  </table>
-</div>
+  <section class="toolbar" aria-label="Фильтры">
+    <input id="search" type="search" placeholder="Найти скин…" />
+    <select id="cat-filter" aria-label="Категория"><option value="">Все категории</option></select>
+    <select id="rar-filter" aria-label="Редкость"><option value="">Все редкости</option></select>
+    <div class="sort-lock" title="Фиксированная сортировка">Разница % — больше сверху</div>
+  </section>
 
-<div style="font-size:11px;color:var(--text-muted);margin-top:10px;line-height:1.6;">
-  Разница считается как (лучшая цена на Steam/BUFF/YouPin − цена LIS-SKINS) / цена LIS-SKINS. Зелёный фон строки — на SteamDT дешевле, чем на LIS-SKINS. Данные собраны вручную через браузер (антибот lis-skins и SteamDT блокирует прямые запросы), поэтому этот файл — снимок на момент сбора. Этот HTML-файл сам по себе не может пересобрать данные (антибот заблокирует прямые запросы и из него). Кнопка «Скопировать запрос для Claude» копирует готовый промпт с нужной ссылкой — вставьте его в чат Claude Code, Claude заново соберёт данные и перезапишет именно этот файл (index.html в репозитории cs2-market-tools) и comparison.xlsx, закоммитит и запушит — так что при следующем открытии файла тут будут свежие цифры.
-</div>
-</div>
+  <section class="table-card">
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Скин</th><th>Категория</th><th>Редкость</th><th class="num">Лотов</th>
+          <th class="num">LIS-SKINS</th><th class="num">Steam</th><th class="num">BUFF</th><th class="num">YouPin</th><th class="num">Разница</th>
+        </tr></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="footnote">Разница считается относительно лучшей цены среди BUFF и YouPin: (Китай − LIS-SKINS) / LIS-SKINS. Чем выше процент, тем выше позиция в таблице. Steam показан для справки и в расчёте не участвует.</p>
+</main>
 
 <script>
 const DATA = {"usd_rate":86.57,"cny_rate":12.21,"rows":[["12777","MAC-10 | Fade (Factory New)","https://lis-skins.com/ru/market/csgo/mac-10-fade-factory-new/",453,2822.18,3331.38,2539.68,2478.63,"SMG","Mil-Spec Grade"],["184792","Desert Eagle | Starcade (Field-Tested)","https://lis-skins.com/ru/market/csgo/desert-eagle-starcade-field-tested/",330,2617.01,3111.11,2246.64,2324.42,"Pistol","Classified"],["144904","Dual Berettas | Emerald (Factory New)","https://lis-skins.com/ru/market/csgo/dual-berettas-emerald-factory-new/",173,2079.41,2704.76,2095.11,1910.62,"Pistol","Mil-Spec Grade"],["11697","Galil AR | Cerberus (Field-Tested)","https://lis-skins.com/ru/market/csgo/galil-ar-cerberus-field-tested/",189,2003.23,2188.28,1775.94,1749.08,"Rifle","Restricted"],["12764","CZ75-Auto | Emerald (Factory New)","https://lis-skins.com/ru/market/csgo/cz75-auto-emerald-factory-new/",143,1970.33,2629.67,1770.21,1855.8,"Pistol","Mil-Spec Grade"],["11704","FAMAS | Styx (Minimal Wear)","https://lis-skins.com/ru/market/csgo/famas-styx-minimal-wear/",124,1409.36,1624.42,1280.83,1294.26,"Rifle","Restricted"],["8327","UMP-45 | Blaze (Factory New)","https://lis-skins.com/ru/market/csgo/ump-45-blaze-factory-new/",393,1306.34,1576.31,1196.58,1170.94,"SMG","Mil-Spec Grade"],["187066","MP9 | Latte Rush (Field-Tested)","https://lis-skins.com/ru/market/csgo/mp9-latte-rush-field-tested/",348,700.35,897.44,633.21,627.59,"SMG","Classified"],["11713","FAMAS | Styx (Field-Tested)","https://lis-skins.com/ru/market/csgo/famas-styx-field-tested/",220,698.62,798.78,634.19,645.91,"Rifle","Restricted"],["148019","AUG | Carved Jade (Minimal Wear)","https://lis-skins.com/ru/market/csgo/aug-carved-jade-minimal-wear/",115,687.37,718.8,633.58,633.7,"Rifle","Mil-Spec Grade"],["null","M4A4 | Polysoup (Field-Tested)","https://lis-skins.com/ru/market/csgo/m4a4-polysoup-field-tested/",192,673.51,815.87,604.4,605.37,"Rifle","Restricted"],["60309","SG 553 | Integrale (Field-Tested)","https://lis-skins.com/ru/market/csgo/sg-553-integrale-field-tested/",243,488.25,654.33,428.45,426.13,"Rifle","Classified"],["153882","Sticker | Outsiders (Holo) | Antwerp 2022","https://lis-skins.com/ru/market/csgo/sticker-outsiders-holo-antwerp-2022/",109,452.76,667.4,402.81,395.48,"Sticker","Exotic"],["153890","Sticker | 9z Team (Holo) | Antwerp 2022","https://lis-skins.com/ru/market/csgo/sticker-9z-team-holo-antwerp-2022/",191,448.43,574.36,367.03,415.02,"Sticker","Exotic"],["151523","Sticker | Entropiq (Holo) | Stockholm 2021","https://lis-skins.com/ru/market/csgo/sticker-entropiq-holo-stockholm-2021/",252,431.98,558,383.15,377.17,"Sticker","Remarkable"],["151518","Sticker | GODSENT (Holo) | Stockholm 2021","https://lis-skins.com/ru/market/csgo/sticker-godsent-holo-stockholm-2021/",142,380.04,436.51,278.63,332.11,"Sticker","Remarkable"],["151538","Sticker | BIG (Holo) | Stockholm 2021","https://lis-skins.com/ru/market/csgo/sticker-big-holo-stockholm-2021/",177,322.91,456.9,300.49,282.05,"Sticker","Remarkable"],["151489","Sticker | Renegades (Holo) | Stockholm 2021","https://lis-skins.com/ru/market/csgo/sticker-renegades-holo-stockholm-2021/",178,208.63,265.08,192.92,183.15,"Sticker","Remarkable"],["150671","R8 Revolver | Blaze (Factory New)","https://lis-skins.com/ru/market/csgo/r8-revolver-blaze-factory-new/",419,201.71,249.57,177.05,175.82,"Pistol","Mil-Spec Grade"],["185556","Sticker | Perfect World (Holo) | Shanghai 2024","https://lis-skins.com/ru/market/csgo/sticker-perfect-world-holo-shanghai-2024/",417,193.05,228.45,176.92,175.7,"Sticker","Exotic"],["null","Tec-9 | Whiteout (Field-Tested)","https://lis-skins.com/ru/market/csgo/tec-9-whiteout-field-tested/",442,180.07,216.97,156.29,156.78,"Pistol","Restricted"],["8688","P2000 | Amber Fade (Factory New)","https://lis-skins.com/ru/market/csgo/p2000-amber-fade-factory-new/",359,112.54,163.98,98.66,97.07,"Pistol","Restricted"],["184830","SSG 08 | Rapid Transit (Field-Tested)","https://lis-skins.com/ru/market/csgo/ssg-08-rapid-transit-field-tested/",220,85.7,123.93,73.26,78.02,"Sniper Rifle","Restricted"]]};
 
-const fmt = (n) => Math.round(n).toLocaleString('ru-RU');
+const fmt = (n) => Number.isFinite(n) && n > 0 ? Math.round(n).toLocaleString('ru-RU') : '—';
 const fmtPct = (n) => (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
 
 function computeRows() {
   return DATA.rows.map(r => {
     const [id, name, url, qty, lis, steam, buff, youpin, category, rarity] = r;
-    const best = Math.min(steam, buff, youpin);
-    const bestLabel = best === steam ? 'Steam' : (best === buff ? 'BUFF' : 'YouPin');
-    const diff = ((best - lis) / lis) * 100;
-    return {id, name, url, qty, lis, steam, buff, youpin, best, bestLabel, diff, category: category || '', rarity: rarity || ''};
+    const chinaPrices = [{ label: 'BUFF', value: buff }, { label: 'YouPin', value: youpin }].filter(x => x.value > 0);
+    const bestChina = chinaPrices.length ? Math.min(...chinaPrices.map(x => x.value)) : null;
+    const bestChinaLabel = chinaPrices.find(x => x.value === bestChina)?.label || '—';
+    const diff = bestChina == null || !lis ? -Infinity : ((bestChina - lis) / lis) * 100;
+    return {id, name, url, qty, lis, steam, buff, youpin, bestChina, bestChinaLabel, diff, category: category || '', rarity: rarity || ''};
   });
 }
 const ALL_ROWS = computeRows();
@@ -163,31 +215,37 @@ refreshRarityFilter();
 
 function renderStats(rows) {
   const sumLis = rows.reduce((a, r) => a + r.lis, 0);
-  const sumBest = rows.reduce((a, r) => a + r.best, 0);
-  const avgDiff = rows.reduce((a, r) => a + r.diff, 0) / (rows.length || 1);
+  const comparable = rows.filter(r => Number.isFinite(r.diff));
+  const sumBest = comparable.reduce((a, r) => a + r.bestChina, 0);
+  const avgDiff = comparable.reduce((a, r) => a + r.diff, 0) / (comparable.length || 1);
   document.getElementById('stat-count').textContent = rows.length;
   document.getElementById('stat-lis').textContent = fmt(sumLis) + ' ₽';
   document.getElementById('stat-best').textContent = fmt(sumBest) + ' ₽';
   const diffEl = document.getElementById('stat-diff');
   diffEl.textContent = fmtPct(avgDiff);
-  diffEl.style.color = avgDiff >= 0 ? 'var(--text-success)' : 'var(--text-danger)';
+  diffEl.style.color = avgDiff >= 0 ? 'var(--good)' : 'var(--bad)';
 }
 
 function renderTable(rows) {
   const body = document.getElementById('table-body');
-  body.innerHTML = rows.map(r => {
-    const rowBg = r.diff >= 0 ? 'background:var(--bg-success);' : 'background:var(--bg-danger);';
-    const diffColor = r.diff >= 0 ? 'color:var(--text-success);' : 'color:var(--text-danger);';
-    return `<tr style="${rowBg}">
-      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);white-space:nowrap;"><a href="${r.url}" target="_blank" rel="noopener" style="color:var(--text-primary);text-decoration:none;">${r.name}</a> <a href="https://www.steamdt.com/en/cs2/${encodeURIComponent(r.name)}?tab=trend&type=charts" target="_blank" rel="noopener" title="Открыть предмет на SteamDT" style="color:var(--text-muted);font-size:11px;text-decoration:none;margin-left:4px;">SteamDT&nbsp;↗</a></td>
-      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);white-space:nowrap;">${r.category || '—'}</td>
-      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);color:var(--text-secondary);white-space:nowrap;">${r.rarity || '—'}</td>
-      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;color:var(--text-secondary);">${r.qty}</td>
-      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;">${fmt(r.lis)}</td>
-      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;${r.bestLabel==='Steam'?'font-weight:600;':''}">${fmt(r.steam)}</td>
-      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;${r.bestLabel==='BUFF'?'font-weight:600;':''}">${fmt(r.buff)}</td>
-      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;${r.bestLabel==='YouPin'?'font-weight:600;':''}">${fmt(r.youpin)}</td>
-      <td style="padding:6px 10px;border-bottom:0.5px solid var(--border);text-align:right;${diffColor}">${fmtPct(r.diff)} (${r.bestLabel})</td>
+  if (!rows.length) {
+    body.innerHTML = '<tr><td class="empty" colspan="10">Ничего не найдено — попробуйте изменить фильтры.</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map((r, index) => {
+    const diffClass = r.diff >= 0 ? 'diff-positive' : 'diff-negative';
+    const diffText = Number.isFinite(r.diff) ? `${fmtPct(r.diff)} · ${r.bestChinaLabel}` : 'нет данных';
+    return `<tr>
+      <td class="rank">${index + 1}</td>
+      <td><a class="skin-link" href="${r.url}" target="_blank" rel="noopener">${r.name}</a><a class="external-link" href="https://www.steamdt.com/en/cs2/${encodeURIComponent(r.name)}?tab=trend&type=charts" target="_blank" rel="noopener" title="Открыть предмет на SteamDT">SteamDT ↗</a></td>
+      <td><span class="tag">${r.category || '—'}</span></td>
+      <td><span class="tag">${r.rarity || '—'}</span></td>
+      <td class="num">${r.qty}</td>
+      <td class="num price-lis">${fmt(r.lis)}</td>
+      <td class="num">${fmt(r.steam)}</td>
+      <td class="num ${r.bestChinaLabel === 'BUFF' ? 'best-china' : ''}">${fmt(r.buff)}</td>
+      <td class="num ${r.bestChinaLabel === 'YouPin' ? 'best-china' : ''}">${fmt(r.youpin)}</td>
+      <td class="num"><span class="diff-pill ${diffClass}">${diffText}</span></td>
     </tr>`;
   }).join('');
 }
@@ -196,14 +254,9 @@ function applyFilterSort() {
   const q = document.getElementById('search').value.trim().toLowerCase();
   const cat = document.getElementById('cat-filter').value;
   const rar = document.getElementById('rar-filter').value;
-  const sortMode = document.getElementById('sort-select').value;
   let rows = ALL_ROWS.filter(r => r.name.toLowerCase().includes(q) &&
     (!cat || r.category === cat) && (!rar || r.rarity === rar));
-  if (sortMode === 'lis-desc') rows.sort((a, b) => b.lis - a.lis);
-  else if (sortMode === 'lis-asc') rows.sort((a, b) => a.lis - b.lis);
-  else if (sortMode === 'diff-desc') rows.sort((a, b) => b.diff - a.diff);
-  else if (sortMode === 'diff-asc') rows.sort((a, b) => a.diff - b.diff);
-  else if (sortMode === 'name-asc') rows.sort((a, b) => a.name.localeCompare(b.name));
+  rows.sort((a, b) => (b.diff - a.diff) || a.name.localeCompare(b.name));
   renderStats(rows);
   renderTable(rows);
 }
@@ -211,7 +264,6 @@ function applyFilterSort() {
 document.getElementById('search').addEventListener('input', applyFilterSort);
 document.getElementById('cat-filter').addEventListener('change', () => { refreshRarityFilter(); applyFilterSort(); });
 document.getElementById('rar-filter').addEventListener('change', applyFilterSort);
-document.getElementById('sort-select').addEventListener('change', applyFilterSort);
 const SERVER_MODE = location.protocol.startsWith('http');
 const btn = document.getElementById('refresh-btn');
 const statusEl = document.getElementById('copy-status');
@@ -258,7 +310,7 @@ btn.addEventListener('click', async () => {
     return;
   }
   // файл открыт напрямую (file://) — сервер недоступен, отдаём промпт для Claude
-  const prompt = 'Обнови сравнение цен CS2 по ссылке: ' + url + '\n\nТезисно:\n- список избранного lis-skins по этой ссылке — UI сайта его не фильтрует (баг), читать skin_ids напрямую из клиентского кэша страницы (vue-query, ключ userLists)\n- по каждому скину: название, доступное количество, цена в $ и ₽ (курс — с lis-skins)\n- на steamdt.com (/en/mkt) по каждому скину забрать цены Steam, BUFF, YouPin — API отдаёт их в юанях (CNY), перевести в ₽ по курсу из localStorage.commonDictionary.rates того же сайта\n- посчитать разницу лучшей из трёх цен SteamDT относительно lis-skins, в ₽ и в %\n- перезаписать файлы C:\\Users\\Пользователь\\Desktop\\cs2-market-tools\\lisskins-steamdt-compare\\index.html и comparison.xlsx новыми данными (не только показать таблицу в чате — реально сохранить файлы на диске)\n- закоммитить и запушить изменения в репозиторий v1nkore/cs2-market-tools, чтобы при следующем открытии index.html на диске уже были свежие данные\n\nЛибо запустите локальный сервер (node server.mjs в папке проекта) и жмите кнопку там — тогда пересборка пройдёт автоматически без Claude.';
+  const prompt = 'Обнови сравнение цен CS2 по ссылке: ' + url + '\n\nТезисно:\n- список избранного lis-skins по этой ссылке — UI сайта его не фильтрует (баг), читать skin_ids напрямую из клиентского кэша страницы (vue-query, ключ userLists)\n- по каждому скину: название, доступное количество, цена в $ и ₽ (курс — с lis-skins)\n- на steamdt.com (/en/mkt) перед парсингом выбрать RUB, затем по каждому скину забрать цены Steam, BUFF, YouPin\n- посчитать разницу лучшей китайской цены (минимум BUFF/YouPin) относительно lis-skins, в ₽ и в %; Steam в расчёт не включать\n- отсортировать по разнице % от большей к меньшей\n- перезаписать index.html и comparison.xlsx новыми данными\n\nЛибо запустите локальный сервер (node server.mjs в папке проекта) и нажмите кнопку там — тогда пересборка пройдёт автоматически.';
   const box = document.getElementById('prompt-box');
   box.style.display = 'block';
   box.value = prompt;
