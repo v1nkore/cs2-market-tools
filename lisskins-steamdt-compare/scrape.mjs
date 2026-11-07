@@ -1,10 +1,9 @@
 // Сбор данных: список избранного с lis-skins + цены Steam/BUFF/YouPin со SteamDT.
-// Оба сайта блокируют прямые HTTP-запросы антиботом, поэтому всё делается внутри
-// настоящего Chromium (Playwright): lis-skins читается из клиентского vue-query кэша
-// страницы, SteamDT — перехватом ответа его собственного API при загрузке страницы поиска.
+// LIS-SKINS читается из публичного JSON-экспорта, не затрагивая Cloudflare-страницу.
+// SteamDT — в скрытом Chromium, перехватом ответа его собственного API.
 //
 // Использование:
-//   node scrape.mjs [--from-site] [--url <lis-skins list url>] [--limit N] [--out data.json] [--no-build]
+//   node scrape.mjs [--url <lis-skins list url>] [--usd-rate 86.57] [--limit N] [--out data.json] [--no-build]
 
 import { chromium } from 'patchright';
 import fs from 'node:fs';
@@ -12,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import { build } from './build.mjs';
-import { parseLisRubRate, steamdtRubCookie } from './currency.mjs';
+import { chooseLisRubRate, parseLisRubRate, steamdtRubCookie } from './currency.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -24,12 +23,9 @@ function arg(name, fallback) {
 }
 const LIST_URL = arg('--url', DEFAULT_URL);
 const LIMIT = Number(arg('--limit', 0)) || 0;
+const USD_RATE_ARG = arg('--usd-rate', null);
 const OUT = arg('--out', path.join(__dirname, 'data.json'));
 const NO_BUILD = process.argv.includes('--no-build');
-// По умолчанию цены lis-skins берутся из публичного JSON-экспорта (без антибота),
-// а список избранного — из прошлого data.json. --from-site: как раньше, через
-// страницу списка в браузере (обновляет сам список), при антиботе — откат на экспорт.
-const FROM_SITE = process.argv.includes('--from-site');
 const EXPORT_URL = 'https://lis-skins.com/market_export_json/csgo.json';
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
 
@@ -38,16 +34,14 @@ function progress(obj) {
 }
 
 async function newBrowser() {
-  // Антибот lis-skins (Cloudflare Turnstile) режет ЛЮБОЙ headless и ловит следы
-  // CDP-автоматизации. Поэтому: patchright (скрывает CDP), системный Chrome,
-  // headful, ПОСТОЯННЫЙ профиль (.chrome-profile) — пройденная проверка живёт в
-  // cookie cf_clearance и не запрашивается заново при каждом запуске.
+  // Браузер нужен только SteamDT. LIS-SKINS сюда намеренно не открываем:
+  // его Cloudflare-сессия из встроенного браузера ChatGPT недоступна Playwright.
   const profileDir = path.join(__dirname, '.chrome-profile');
   const args = ['--disable-blink-features=AutomationControlled'];
-  const base = { headless: false, viewport: null, locale: 'ru-RU', args };
+  const base = { headless: true, viewport: { width: 1280, height: 900 }, locale: 'ru-RU', args };
   const tries = [
-    { ...base, channel: 'chrome' }, // системный Chrome — проходит проверку сразу
-    { ...base },                    // запасной вариант: комплектный Chromium
+    { ...base, channel: 'chrome' },
+    { ...base },
   ];
   let lastErr;
   for (const opts of tries) {
@@ -278,11 +272,11 @@ async function lisSkinsFromExport() {
     favSrc = 'favorites.json';
   } else {
     const prevPath = fs.existsSync(OUT) ? OUT : path.join(__dirname, 'data.json');
-    if (!fs.existsSync(prevPath)) throw new Error('нет ни favorites.json, ни прошлого data.json со списком избранного — запустите с --from-site');
+    if (!fs.existsSync(prevPath)) throw new Error('нет ни favorites.json, ни прошлого data.json со списком избранного');
     favorites = JSON.parse(fs.readFileSync(prevPath, 'utf-8')).rows || [];
     favSrc = 'data.json';
   }
-  if (!favorites.length) throw new Error(`пустой список избранного (${favSrc}) — запустите с --from-site`);
+  if (!favorites.length) throw new Error(`пустой список избранного (${favSrc})`);
 
   progress({ stage: 'lis-skins', msg: `экспорт цен lis-skins (избранное из ${favSrc}: ${favorites.length})` });
   const exp = await fetchJson(EXPORT_URL);
@@ -364,28 +358,29 @@ async function scrapeSteamdt(page, names) {
 }
 
 async function main() {
+  const previousPath = path.join(__dirname, 'data.json');
+  const previousData = fs.existsSync(previousPath)
+    ? JSON.parse(fs.readFileSync(previousPath, 'utf-8'))
+    : null;
+  const { rate: usdRate, source: usdRateSource, updatedAt: usdRateUpdatedAt } =
+    chooseLisRubRate(USD_RATE_ARG, previousData);
+
+  progress({
+    stage: 'lis-skins',
+    msg: usdRateSource === 'provided'
+      ? `использую заданный курс USD→RUB: ${usdRate}`
+      : `использую последний подтверждённый курс USD→RUB: ${usdRate}`,
+    warning: usdRateSource.startsWith('cached') ? 'курс взят из предыдущей успешной сборки' : null,
+  });
+
+  let { rows, source: lisSource } = await lisSkinsFromExport();
+  if (LIMIT) rows = rows.slice(0, LIMIT);
+  progress({ stage: 'lis-skins', msg: `собрано позиций: ${rows.length}, курс LIS-SKINS $ ${usdRate}` });
+
   const browser = await newBrowser();
   try {
-    // userAgent НЕ подменяем: у headful-браузера он и так настоящий, а расхождение
-    // подменённого UA с заголовком sec-ch-ua — само по себе сигнал для антибота.
     const ctx = browser; // persistent context
     const page = ctx.pages()[0] || await ctx.newPage();
-
-    const usdRate = await scrapeLisRubRate(page);
-    let rows, source = 'site';
-    if (FROM_SITE) {
-      try {
-        ({ rows } = await scrapeLisSkins(page));
-      } catch (e) {
-        if (!/антибот/i.test(String(e.message || e))) throw e;
-        progress({ stage: 'lis-skins', msg: 'антибот не пустил на страницу — беру цены из публичного экспорта' });
-        ({ rows, source } = await lisSkinsFromExport());
-      }
-    } else {
-      ({ rows, source } = await lisSkinsFromExport());
-    }
-    if (LIMIT) rows = rows.slice(0, LIMIT);
-    progress({ stage: 'lis-skins', msg: `собрано позиций: ${rows.length}, курс LIS-SKINS $ ${usdRate}` });
 
     const { prices, cnyRate } = await scrapeSteamdt(page, rows.map(r => r.name));
     if (!cnyRate) throw new Error('не удалось получить курс CNY→RUB со SteamDT');
@@ -395,8 +390,9 @@ async function main() {
       generatedAt: new Date().toISOString(),
       listUrl: LIST_URL,
       usd_rate: usdRate,
-      usd_rate_source: 'lis-skins',
-      lis_source: source,
+      usd_rate_source: usdRateSource,
+      usd_rate_updated_at: usdRateUpdatedAt,
+      lis_source: lisSource,
       cny_rate: cnyRate,
       rows: rows.map(r => {
         const p = prices[r.name] || {};

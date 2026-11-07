@@ -1,191 +1,26 @@
 {
- "_help": "Список избранного lis-skins для сравнения (источник списка при сборе из экспорта). Обновляется из кэша страницы списка в обычном браузере: vue-query, ключи userLists/skins.",
+ "_help": "Актуальный список избранного LIS-SKINS. Считывается через встроенный браузер ChatGPT; цены при сборке берутся из публичного экспорта.",
  "list_id": "01kvbgbzhn0acjzykwfagmc96y",
  "updated": "2026-11-07",
- "skin_ids_all": [
-  12777,
-  184792,
-  144904,
-  11697,
-  12764,
-  11704,
-  8327,
-  187066,
-  11713,
-  148019,
-  60309,
-  153882,
-  153890,
-  151523,
-  151518,
-  151538,
-  151489,
-  150671,
-  185556,
-  8688,
-  184830
- ],
+ "skin_ids_all": [12777, 184792, 12764, 11697, 11704, 8327, 187066, 148019, 11713, 60309, 153882, 150671, 185556, 184830],
  "items": [
-  {
-   "id": 12777,
-   "name": "MAC-10 | Fade (Factory New)",
-   "url": "https://lis-skins.com/ru/market/csgo/mac-10-fade-factory-new/",
-   "category": "SMG",
-   "rarity": "Mil-Spec Grade"
-  },
-  {
-   "id": 184792,
-   "name": "Desert Eagle | Starcade (Field-Tested)",
-   "url": "https://lis-skins.com/ru/market/csgo/desert-eagle-starcade-field-tested/",
-   "category": "Pistol",
-   "rarity": "Classified"
-  },
-  {
-   "id": 144904,
-   "name": "Dual Berettas | Emerald (Factory New)",
-   "url": "https://lis-skins.com/ru/market/csgo/dual-berettas-emerald-factory-new/",
-   "category": "Pistol",
-   "rarity": "Mil-Spec Grade"
-  },
-  {
-   "id": 11697,
-   "name": "Galil AR | Cerberus (Field-Tested)",
-   "url": "https://lis-skins.com/ru/market/csgo/galil-ar-cerberus-field-tested/",
-   "category": "Rifle",
-   "rarity": "Restricted"
-  },
-  {
-   "id": 12764,
-   "name": "CZ75-Auto | Emerald (Factory New)",
-   "url": "https://lis-skins.com/ru/market/csgo/cz75-auto-emerald-factory-new/",
-   "category": "Pistol",
-   "rarity": "Mil-Spec Grade"
-  },
-  {
-   "id": 11704,
-   "name": "FAMAS | Styx (Minimal Wear)",
-   "url": "https://lis-skins.com/ru/market/csgo/famas-styx-minimal-wear/",
-   "category": "Rifle",
-   "rarity": "Restricted"
-  },
-  {
-   "id": 8327,
-   "name": "UMP-45 | Blaze (Factory New)",
-   "url": "https://lis-skins.com/ru/market/csgo/ump-45-blaze-factory-new/",
-   "category": "SMG",
-   "rarity": "Mil-Spec Grade"
-  },
-  {
-   "id": 187066,
-   "name": "MP9 | Latte Rush (Field-Tested)",
-   "url": "https://lis-skins.com/ru/market/csgo/mp9-latte-rush-field-tested/",
-   "category": "SMG",
-   "rarity": "Classified"
-  },
-  {
-   "id": 11713,
-   "name": "FAMAS | Styx (Field-Tested)",
-   "url": "https://lis-skins.com/ru/market/csgo/famas-styx-field-tested/",
-   "category": "Rifle",
-   "rarity": "Restricted"
-  },
-  {
-   "id": 148019,
-   "name": "AUG | Carved Jade (Minimal Wear)",
-   "url": "https://lis-skins.com/ru/market/csgo/aug-carved-jade-minimal-wear/",
-   "category": "Rifle",
-   "rarity": "Mil-Spec Grade"
-  },
-  {
-   "id": null,
-   "name": "M4A4 | Polysoup (Field-Tested)",
-   "url": "https://lis-skins.com/ru/market/csgo/m4a4-polysoup-field-tested/",
-   "category": "Rifle",
-   "rarity": "Restricted"
-  },
-  {
-   "id": 60309,
-   "name": "SG 553 | Integrale (Field-Tested)",
-   "url": "https://lis-skins.com/ru/market/csgo/sg-553-integrale-field-tested/",
-   "category": "Rifle",
-   "rarity": "Classified"
-  },
-  {
-   "id": 153882,
-   "name": "Sticker | Outsiders (Holo) | Antwerp 2022",
-   "url": "https://lis-skins.com/ru/market/csgo/sticker-outsiders-holo-antwerp-2022/",
-   "category": "Sticker",
-   "rarity": "Exotic"
-  },
-  {
-   "id": 153890,
-   "name": "Sticker | 9z Team (Holo) | Antwerp 2022",
-   "url": "https://lis-skins.com/ru/market/csgo/sticker-9z-team-holo-antwerp-2022/",
-   "category": "Sticker",
-   "rarity": "Exotic"
-  },
-  {
-   "id": 151523,
-   "name": "Sticker | Entropiq (Holo) | Stockholm 2021",
-   "url": "https://lis-skins.com/ru/market/csgo/sticker-entropiq-holo-stockholm-2021/",
-   "category": "Sticker",
-   "rarity": "Remarkable"
-  },
-  {
-   "id": 151518,
-   "name": "Sticker | GODSENT (Holo) | Stockholm 2021",
-   "url": "https://lis-skins.com/ru/market/csgo/sticker-godsent-holo-stockholm-2021/",
-   "category": "Sticker",
-   "rarity": "Remarkable"
-  },
-  {
-   "id": 151538,
-   "name": "Sticker | BIG (Holo) | Stockholm 2021",
-   "url": "https://lis-skins.com/ru/market/csgo/sticker-big-holo-stockholm-2021/",
-   "category": "Sticker",
-   "rarity": "Remarkable"
-  },
-  {
-   "id": 151489,
-   "name": "Sticker | Renegades (Holo) | Stockholm 2021",
-   "url": "https://lis-skins.com/ru/market/csgo/sticker-renegades-holo-stockholm-2021/",
-   "category": "Sticker",
-   "rarity": "Remarkable"
-  },
-  {
-   "id": 150671,
-   "name": "R8 Revolver | Blaze (Factory New)",
-   "url": "https://lis-skins.com/ru/market/csgo/r8-revolver-blaze-factory-new/",
-   "category": "Pistol",
-   "rarity": "Mil-Spec Grade"
-  },
-  {
-   "id": 185556,
-   "name": "Sticker | Perfect World (Holo) | Shanghai 2024",
-   "url": "https://lis-skins.com/ru/market/csgo/sticker-perfect-world-holo-shanghai-2024/",
-   "category": "Sticker",
-   "rarity": "Exotic"
-  },
-  {
-   "id": null,
-   "name": "Tec-9 | Whiteout (Field-Tested)",
-   "url": "https://lis-skins.com/ru/market/csgo/tec-9-whiteout-field-tested/",
-   "category": "Pistol",
-   "rarity": "Restricted"
-  },
-  {
-   "id": 8688,
-   "name": "P2000 | Amber Fade (Factory New)",
-   "url": "https://lis-skins.com/ru/market/csgo/p2000-amber-fade-factory-new/",
-   "category": "Pistol",
-   "rarity": "Restricted"
-  },
-  {
-   "id": 184830,
-   "name": "SSG 08 | Rapid Transit (Field-Tested)",
-   "url": "https://lis-skins.com/ru/market/csgo/ssg-08-rapid-transit-field-tested/",
-   "category": "Sniper Rifle",
-   "rarity": "Restricted"
-  }
+  {"id": 12777, "name": "MAC-10 | Fade (Factory New)", "url": "https://lis-skins.com/ru/market/csgo/mac-10-fade-factory-new/", "category": "SMG", "rarity": "Mil-Spec Grade"},
+  {"id": 184792, "name": "Desert Eagle | Starcade (Field-Tested)", "url": "https://lis-skins.com/ru/market/csgo/desert-eagle-starcade-field-tested/", "category": "Pistol", "rarity": "Classified"},
+  {"id": 12764, "name": "CZ75-Auto | Emerald (Factory New)", "url": "https://lis-skins.com/ru/market/csgo/cz75-auto-emerald-factory-new/", "category": "Pistol", "rarity": "Mil-Spec Grade"},
+  {"id": 11697, "name": "Galil AR | Cerberus (Field-Tested)", "url": "https://lis-skins.com/ru/market/csgo/galil-ar-cerberus-field-tested/", "category": "Rifle", "rarity": "Restricted"},
+  {"id": 11704, "name": "FAMAS | Styx (Minimal Wear)", "url": "https://lis-skins.com/ru/market/csgo/famas-styx-minimal-wear/", "category": "Rifle", "rarity": "Restricted"},
+  {"id": 8327, "name": "UMP-45 | Blaze (Factory New)", "url": "https://lis-skins.com/ru/market/csgo/ump-45-blaze-factory-new/", "category": "SMG", "rarity": "Mil-Spec Grade"},
+  {"id": null, "name": "SG 553 | Integrale (Minimal Wear)", "url": "https://lis-skins.com/ru/market/csgo/sg-553-integrale-minimal-wear/", "category": "Rifle", "rarity": "Classified"},
+  {"id": null, "name": "M4A4 | Polysoup (Minimal Wear)", "url": "https://lis-skins.com/ru/market/csgo/m4a4-polysoup-minimal-wear/", "category": "Rifle", "rarity": "Restricted"},
+  {"id": 187066, "name": "MP9 | Latte Rush (Field-Tested)", "url": "https://lis-skins.com/ru/market/csgo/mp9-latte-rush-field-tested/", "category": "SMG", "rarity": "Classified"},
+  {"id": 148019, "name": "AUG | Carved Jade (Minimal Wear)", "url": "https://lis-skins.com/ru/market/csgo/aug-carved-jade-minimal-wear/", "category": "Rifle", "rarity": "Mil-Spec Grade"},
+  {"id": 11713, "name": "FAMAS | Styx (Field-Tested)", "url": "https://lis-skins.com/ru/market/csgo/famas-styx-field-tested/", "category": "Rifle", "rarity": "Restricted"},
+  {"id": null, "name": "M4A4 | Polysoup (Field-Tested)", "url": "https://lis-skins.com/ru/market/csgo/m4a4-polysoup-field-tested/", "category": "Rifle", "rarity": "Restricted"},
+  {"id": 60309, "name": "SG 553 | Integrale (Field-Tested)", "url": "https://lis-skins.com/ru/market/csgo/sg-553-integrale-field-tested/", "category": "Rifle", "rarity": "Classified"},
+  {"id": 153882, "name": "Sticker | Outsiders (Holo) | Antwerp 2022", "url": "https://lis-skins.com/ru/market/csgo/sticker-outsiders-holo-antwerp-2022/", "category": "Sticker", "rarity": "Exotic"},
+  {"id": 150671, "name": "R8 Revolver | Blaze (Factory New)", "url": "https://lis-skins.com/ru/market/csgo/r8-revolver-blaze-factory-new/", "category": "Pistol", "rarity": "Mil-Spec Grade"},
+  {"id": 185556, "name": "Sticker | Perfect World (Holo) | Shanghai 2024", "url": "https://lis-skins.com/ru/market/csgo/sticker-perfect-world-holo-shanghai-2024/", "category": "Sticker", "rarity": "Exotic"},
+  {"id": null, "name": "Tec-9 | Whiteout (Field-Tested)", "url": "https://lis-skins.com/ru/market/csgo/tec-9-whiteout-field-tested/", "category": "Pistol", "rarity": "Restricted"},
+  {"id": 184830, "name": "SSG 08 | Rapid Transit (Field-Tested)", "url": "https://lis-skins.com/ru/market/csgo/ssg-08-rapid-transit-field-tested/", "category": "Sniper Rifle", "rarity": "Restricted"}
  ]
 }

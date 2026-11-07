@@ -16,7 +16,7 @@ const PORT = Number(process.env.PORT || 8317);
 const REPO_ROOT = path.resolve(__dirname, '..');
 const AUTOPUSH = process.env.GIT_AUTOPUSH !== '0' && fs.existsSync(path.join(REPO_ROOT, '.git'));
 
-const state = { running: false, stage: null, done: 0, total: 0, msg: '', error: null, finishedAt: null, gitResult: null };
+const state = { running: false, stage: null, done: 0, total: 0, msg: '', warning: null, error: null, finishedAt: null, gitResult: null };
 
 function runGitPush(cb) {
   const files = ['lisskins-steamdt-compare/index.html', 'lisskins-steamdt-compare/comparison.xlsx', 'lisskins-steamdt-compare/data.json'];
@@ -29,7 +29,7 @@ function runGitPush(cb) {
   });
 }
 
-function startRebuild(listUrl) {
+function startRebuild(listUrl, usdRate) {
   if (!fs.existsSync(path.join(__dirname, 'node_modules', 'playwright'))) {
     Object.assign(state, {
       running: false, stage: 'error', done: 0, total: 0, msg: '', finishedAt: null, gitResult: null,
@@ -38,9 +38,10 @@ function startRebuild(listUrl) {
     return;
   }
   state.running = true;
-  Object.assign(state, { stage: 'start', done: 0, total: 0, msg: '', error: null, finishedAt: null, gitResult: null });
+  Object.assign(state, { stage: 'start', done: 0, total: 0, msg: '', warning: null, error: null, finishedAt: null, gitResult: null });
   const args = [path.join(__dirname, 'scrape.mjs')];
   if (listUrl) args.push('--url', listUrl);
+  if (Number.isFinite(Number(usdRate)) && Number(usdRate) > 0) args.push('--usd-rate', String(Number(usdRate)));
   const child = spawn(process.execPath, args, { cwd: __dirname, env: process.env });
   let buf = '';
   child.stdout.on('data', chunk => {
@@ -100,8 +101,13 @@ http.createServer((req, res) => {
     req.on('data', c => { body += c; });
     req.on('end', () => {
       let listUrl = null;
-      try { listUrl = JSON.parse(body || '{}').url || null; } catch {}
-      startRebuild(listUrl);
+      let usdRate = null;
+      try {
+        const input = JSON.parse(body || '{}');
+        listUrl = input.url || null;
+        usdRate = input.usdRate || null;
+      } catch {}
+      startRebuild(listUrl, usdRate);
       res.writeHead(200, { 'content-type': MIME['.json'] });
       res.end(JSON.stringify({ started: true }));
     });

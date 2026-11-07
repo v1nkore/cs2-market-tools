@@ -14,3 +14,21 @@ export function steamdtRubCookie() {
     path: '/',
   };
 }
+
+export function chooseLisRubRate(explicitRate, previousData) {
+  const explicit = Number(explicitRate);
+  if (Number.isFinite(explicit) && explicit > 0) {
+    return { rate: explicit, source: 'provided', updatedAt: new Date().toISOString() };
+  }
+
+  const cached = Number(previousData && previousData.usd_rate);
+  if (Number.isFinite(cached) && cached > 0) {
+    return {
+      rate: cached,
+      source: 'cached:data.json',
+      updatedAt: previousData.usd_rate_updated_at || previousData.generatedAt || null,
+    };
+  }
+
+  throw new Error('не задан курс LIS-SKINS USD→RUB и нет предыдущего значения в data.json');
+}

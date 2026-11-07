@@ -18,7 +18,11 @@ export async function build(dataPath = path.join(__dirname, 'data.json')) {
     .map(r => [String(r.id), r.name, r.url, r.qty, r.lis_rub, r.steam_rub ?? 0, r.buff_rub ?? 0, r.youpin_rub ?? 0, r.category || '', r.rarity || '']);
 
   const dataLine = 'const DATA = ' + JSON.stringify({
-    usd_rate: data.usd_rate, cny_rate: data.cny_rate, rows: compactRows,
+    usd_rate: data.usd_rate,
+    usd_rate_source: data.usd_rate_source,
+    usd_rate_updated_at: data.usd_rate_updated_at,
+    cny_rate: data.cny_rate,
+    rows: compactRows,
   }) + ';';
   if (!/^const DATA = .*;$/m.test(html)) throw new Error('index.html: не найдена строка const DATA');
   html = html.replace(/^const DATA = .*;$/m, dataLine);
@@ -26,7 +30,8 @@ export async function build(dataPath = path.join(__dirname, 'data.json')) {
   const d = new Date(data.generatedAt);
   const stamp = String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear() +
     ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-  const metaText = `${compactRows.length} позиций избранного · курс $ ${data.usd_rate} ₽ · курс ¥ ${data.cny_rate} ₽ · обновлено ${stamp}`;
+  const rateNote = String(data.usd_rate_source || '').startsWith('cached') ? ' (сохранённый)' : '';
+  const metaText = `${compactRows.length} позиций избранного · курс $ ${data.usd_rate} ₽${rateNote} · курс ¥ ${data.cny_rate} ₽ · обновлено ${stamp}`;
   html = html.replace(/(id="meta-line">)[^<]*(<\/div>)/, `$1${metaText}$2`);
   html = html.replace(/(id="list-url" type="text" value=")[^"]*(")/, `$1${data.listUrl}$2`);
 
@@ -37,7 +42,7 @@ export async function build(dataPath = path.join(__dirname, 'data.json')) {
   const ws = wb.addWorksheet('Сравнение цен');
   ws.addRow([`Сравнение цен LIS-SKINS vs Китай (BUFF/YouPin), обновлено ${stamp}`]);
   ws.addRow([`Список: ${data.listUrl}`]);
-  ws.addRow(['Курс LIS-SKINS USD→RUB', data.usd_rate, '', 'Курс CNY→RUB', data.cny_rate]);
+  ws.addRow(['Курс LIS-SKINS USD→RUB', data.usd_rate, data.usd_rate_source || '', 'Курс CNY→RUB', data.cny_rate]);
   ws.addRow([]);
   const header = ws.addRow(['Скин', 'Кол-во', 'LIS-SKINS $', 'LIS-SKINS ₽', 'Steam ₽', 'BUFF ₽', 'YouPin ₽', 'Лучшая Китай ₽', 'Разница ₽', 'Разница %', 'Категория', 'Редкость']);
   header.font = { bold: true };
