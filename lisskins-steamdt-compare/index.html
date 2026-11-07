@@ -66,12 +66,14 @@
   h1 { margin: 2px 0 0; font-size: clamp(22px, 3vw, 31px); letter-spacing: -.035em; line-height: 1.1; }
   .meta { color: var(--text-muted); font-size: 12px; text-align: right; max-width: 520px; }
   .rebuild-card {
-    display: grid; grid-template-columns: minmax(260px, 1fr) 170px auto; gap: 10px;
+    display: grid; grid-template-columns: minmax(260px, 1fr) 150px auto auto; gap: 10px;
     padding: 12px; margin-bottom: 16px; background: rgba(17,23,34,.82); border: 1px solid var(--border);
     border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(14px);
   }
   .primary-button { background: var(--accent); border-color: transparent; color: #08101d; }
   .primary-button:hover { background: #92b2ff; border-color: transparent; }
+  .secondary-button { background: var(--panel-raised); color: var(--text-soft); }
+  .secondary-button:hover { color: var(--text); border-color: var(--accent); }
   .status { grid-column: 1 / -1; padding: 9px 11px; border-radius: 9px; background: var(--accent-soft); color: #c9d8ff; font-size: 12px; }
   .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
   .stat-card { position: relative; overflow: hidden; min-height: 112px; padding: 17px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); }
@@ -134,12 +136,13 @@
         <h1>Сравнение цен CS2</h1>
       </div>
     </div>
-    <div class="meta" id="meta-line">23 позиций избранного · курс $ 86.82 ₽ · курс ¥ 12.21 ₽ · обновлено 07.11.2026 19:15</div>
+    <div class="meta" id="meta-line">18 позиций избранного · курс $ 86.82 ₽ · курс ¥ 12.21 ₽ · обновлено 07.11.2026 19:52</div>
   </header>
 
   <section class="rebuild-card" aria-label="Обновление данных">
     <input id="list-url" type="text" value="https://lis-skins.com/ru/market/cs2/?user_list_id=01kvbgbzhn0acjzykwfagmc96y" placeholder="Ссылка на список избранного LIS-SKINS" />
     <input id="usd-rate" type="number" min="1" step="0.01" inputmode="decimal" aria-label="Курс LIS-SKINS USD в рублях" placeholder="Курс $→₽" title="Внутренний курс LIS-SKINS. Оставьте текущее значение или укажите свежее." />
+    <button id="favorites-btn" class="secondary-button" title="Откроет список и скопирует команду для обновления через встроенный браузер ChatGPT">Обновить избранное</button>
     <button id="refresh-btn" class="primary-button">Скопировать запрос для Claude</button>
     <textarea id="prompt-box" readonly></textarea>
     <div id="copy-status" class="status" style="display:none;"></div>
@@ -171,11 +174,11 @@
     </div>
   </section>
 
-  <p class="footnote">Разница считается относительно лучшей цены среди BUFF и YouPin: (Китай − LIS-SKINS) / LIS-SKINS. Чем выше процент, тем выше позиция в таблице. Steam показан для справки и в расчёте не участвует.</p>
+  <p class="footnote">Разница считается относительно лучшей цены среди BUFF и YouPin: (Китай − LIS-SKINS) / LIS-SKINS. Чем выше процент, тем выше позиция в таблице. Steam показан для справки и в расчёте не участвует. SteamDT хранит валюту в cookie браузера: для встроенного браузера ChatGPT уже выбран RUB; в другом браузере достаточно один раз выбрать RUB на SteamDT.</p>
 </main>
 
 <script>
-const DATA = {"usd_rate":86.82,"usd_rate_source":"provided","usd_rate_updated_at":"2026-11-07T16:13:53.073Z","cny_rate":12.21,"rows":[["12777","MAC-10 | Fade (Factory New)","https://lis-skins.com/ru/market/csgo/mac-10-fade-factory-new/",468,2784.32,3428.69,2564.1,2539.68,"SMG","Mil-Spec Grade"],["184792","Desert Eagle | Starcade (Field-Tested)","https://lis-skins.com/ru/market/csgo/desert-eagle-starcade-field-tested/",323,2641.93,3175.58,2295.48,2301.59,"Pistol","Classified"],["144904","Dual Berettas | Emerald (Factory New)","https://lis-skins.com/ru/market/csgo/dual-berettas-emerald-factory-new/",174,2092.36,2719.29,2075.7,1910.62,"Pistol","Mil-Spec Grade"],["11697","Galil AR | Cerberus (Field-Tested)","https://lis-skins.com/ru/market/csgo/galil-ar-cerberus-field-tested/",187,1951.71,2201.71,1769.96,1755.55,"Rifle","Restricted"],["12764","CZ75-Auto | Emerald (Factory New)","https://lis-skins.com/ru/market/csgo/cz75-auto-emerald-factory-new/",140,1976.89,2587.05,1770.21,1842.61,"Pistol","Mil-Spec Grade"],["11704","FAMAS | Styx (Minimal Wear)","https://lis-skins.com/ru/market/csgo/famas-styx-minimal-wear/",120,1498.51,1666.18,1446.89,1451.52,"Rifle","Restricted"],["8327","UMP-45 | Blaze (Factory New)","https://lis-skins.com/ru/market/csgo/ump-45-blaze-factory-new/",398,1314.45,1589.38,1184.37,1166.06,"SMG","Mil-Spec Grade"],["187066","MP9 | Latte Rush (Field-Tested)","https://lis-skins.com/ru/market/csgo/mp9-latte-rush-field-tested/",350,698.03,883.27,634.43,627.59,"SMG","Classified"],["11713","FAMAS | Styx (Field-Tested)","https://lis-skins.com/ru/market/csgo/famas-styx-field-tested/",228,685.88,795.85,629.79,644.32,"Rifle","Restricted"],["148019","AUG | Carved Jade (Minimal Wear)","https://lis-skins.com/ru/market/csgo/aug-carved-jade-minimal-wear/",114,689.35,716.73,633.58,633.7,"Rifle","Mil-Spec Grade"],["null","M4A4 | Polysoup (Field-Tested)","https://lis-skins.com/ru/market/csgo/m4a4-polysoup-field-tested/",189,680.67,869.35,598.17,592.19,"Rifle","Restricted"],["60309","SG 553 | Integrale (Field-Tested)","https://lis-skins.com/ru/market/csgo/sg-553-integrale-field-tested/",241,487.93,608.18,439.56,424.79,"Rifle","Classified"],["153882","Sticker | Outsiders (Holo) | Antwerp 2022","https://lis-skins.com/ru/market/csgo/sticker-outsiders-holo-antwerp-2022/",121,451.46,649.82,396.34,393.04,"Sticker","Exotic"],["153890","Sticker | 9z Team (Holo) | Antwerp 2022","https://lis-skins.com/ru/market/csgo/sticker-9z-team-holo-antwerp-2022/",199,462.75,658.73,534.43,426.01,"Sticker","Exotic"],["151523","Sticker | Entropiq (Holo) | Stockholm 2021","https://lis-skins.com/ru/market/csgo/sticker-entropiq-holo-stockholm-2021/",243,419.34,556.65,381.93,375.95,"Sticker","Remarkable"],["151518","Sticker | GODSENT (Holo) | Stockholm 2021","https://lis-skins.com/ru/market/csgo/sticker-godsent-holo-stockholm-2021/",140,378.54,497.92,299.15,329.67,"Sticker","Remarkable"],["151538","Sticker | BIG (Holo) | Stockholm 2021","https://lis-skins.com/ru/market/csgo/sticker-big-holo-stockholm-2021/",182,318.63,399.14,300.85,277.17,"Sticker","Remarkable"],["151489","Sticker | Renegades (Holo) | Stockholm 2021","https://lis-skins.com/ru/market/csgo/sticker-renegades-holo-stockholm-2021/",157,210.97,275.82,192.92,183.15,"Sticker","Remarkable"],["150671","R8 Revolver | Blaze (Factory New)","https://lis-skins.com/ru/market/csgo/r8-revolver-blaze-factory-new/",396,193.61,263.61,175.82,174.6,"Pistol","Mil-Spec Grade"],["185556","Sticker | Perfect World (Holo) | Shanghai 2024","https://lis-skins.com/ru/market/csgo/sticker-perfect-world-holo-shanghai-2024/",438,190.14,228.57,177.05,177.05,"Sticker","Exotic"],["null","Tec-9 | Whiteout (Field-Tested)","https://lis-skins.com/ru/market/csgo/tec-9-whiteout-field-tested/",400,184.93,221.98,158.12,159.83,"Pistol","Restricted"],["8688","P2000 | Amber Fade (Factory New)","https://lis-skins.com/ru/market/csgo/p2000-amber-fade-factory-new/",367,110.26,142.86,111.11,95.48,"Pistol","Restricted"],["184830","SSG 08 | Rapid Transit (Field-Tested)","https://lis-skins.com/ru/market/csgo/ssg-08-rapid-transit-field-tested/",218,85.08,117.46,78.14,77.66,"Sniper Rifle","Restricted"]]};
+const DATA = {"usd_rate":86.82,"usd_rate_source":"provided","usd_rate_updated_at":"2026-11-07T16:50:56.527Z","cny_rate":12.21,"rows":[["12777","MAC-10 | Fade (Factory New)","https://lis-skins.com/ru/market/csgo/mac-10-fade-factory-new/",467,2784.32,3428.69,2564.1,2561.66,"SMG","Mil-Spec Grade"],["184792","Desert Eagle | Starcade (Field-Tested)","https://lis-skins.com/ru/market/csgo/desert-eagle-starcade-field-tested/",324,2641.93,3175.58,2295.48,2301.59,"Pistol","Classified"],["12764","CZ75-Auto | Emerald (Factory New)","https://lis-skins.com/ru/market/csgo/cz75-auto-emerald-factory-new/",140,1976.89,2587.05,1770.21,1842.61,"Pistol","Mil-Spec Grade"],["11697","Galil AR | Cerberus (Field-Tested)","https://lis-skins.com/ru/market/csgo/galil-ar-cerberus-field-tested/",186,1951.71,2201.71,1769.96,1755.55,"Rifle","Restricted"],["11704","FAMAS | Styx (Minimal Wear)","https://lis-skins.com/ru/market/csgo/famas-styx-minimal-wear/",121,1498.51,1666.18,1446.89,1451.52,"Rifle","Restricted"],["8327","UMP-45 | Blaze (Factory New)","https://lis-skins.com/ru/market/csgo/ump-45-blaze-factory-new/",397,1314.45,1568.99,1184.37,1166.06,"SMG","Mil-Spec Grade"],["null","SG 553 | Integrale (Minimal Wear)","https://lis-skins.com/ru/market/csgo/sg-553-integrale-minimal-wear/",274,1249.34,1457.14,1118.07,1106.96,"Rifle","Classified"],["null","M4A4 | Polysoup (Minimal Wear)","https://lis-skins.com/ru/market/csgo/m4a4-polysoup-minimal-wear/",268,883.83,1408.18,872.89,769.23,"Rifle","Restricted"],["187066","MP9 | Latte Rush (Field-Tested)","https://lis-skins.com/ru/market/csgo/mp9-latte-rush-field-tested/",351,698.03,891.45,634.43,627.59,"SMG","Classified"],["148019","AUG | Carved Jade (Minimal Wear)","https://lis-skins.com/ru/market/csgo/aug-carved-jade-minimal-wear/",114,689.35,716.73,633.58,633.7,"Rifle","Mil-Spec Grade"],["11713","FAMAS | Styx (Field-Tested)","https://lis-skins.com/ru/market/csgo/famas-styx-field-tested/",226,685.88,795.85,629.79,644.32,"Rifle","Restricted"],["null","M4A4 | Polysoup (Field-Tested)","https://lis-skins.com/ru/market/csgo/m4a4-polysoup-field-tested/",192,680.67,818.8,601.83,592.06,"Rifle","Restricted"],["60309","SG 553 | Integrale (Field-Tested)","https://lis-skins.com/ru/market/csgo/sg-553-integrale-field-tested/",239,487.93,608.18,439.56,424.79,"Rifle","Classified"],["153882","Sticker | Outsiders (Holo) | Antwerp 2022","https://lis-skins.com/ru/market/csgo/sticker-outsiders-holo-antwerp-2022/",120,451.46,649.82,396.09,393.04,"Sticker","Exotic"],["150671","R8 Revolver | Blaze (Factory New)","https://lis-skins.com/ru/market/csgo/r8-revolver-blaze-factory-new/",393,193.61,273.38,175.82,174.6,"Pistol","Mil-Spec Grade"],["185556","Sticker | Perfect World (Holo) | Shanghai 2024","https://lis-skins.com/ru/market/csgo/sticker-perfect-world-holo-shanghai-2024/",438,190.14,228.57,177.05,177.05,"Sticker","Exotic"],["null","Tec-9 | Whiteout (Field-Tested)","https://lis-skins.com/ru/market/csgo/tec-9-whiteout-field-tested/",379,182.32,227.72,158.12,159.83,"Pistol","Restricted"],["184830","SSG 08 | Rapid Transit (Field-Tested)","https://lis-skins.com/ru/market/csgo/ssg-08-rapid-transit-field-tested/",219,85.95,119.9,78.14,77.66,"Sniper Rifle","Restricted"]]};
 
 document.getElementById('usd-rate').value = DATA.usd_rate || '';
 
@@ -240,7 +243,7 @@ function renderTable(rows) {
     const diffText = Number.isFinite(r.diff) ? `${fmtPct(r.diff)} · ${r.bestChinaLabel}` : 'нет данных';
     return `<tr>
       <td class="rank">${index + 1}</td>
-      <td><a class="skin-link" href="${r.url}" target="_blank" rel="noopener">${r.name}</a><a class="external-link" href="https://www.steamdt.com/en/cs2/${encodeURIComponent(r.name)}?tab=trend&type=charts" target="_blank" rel="noopener" title="Открыть предмет на SteamDT">SteamDT ↗</a></td>
+      <td><a class="skin-link" href="${r.url}" target="_blank" rel="noopener">${r.name}</a><a class="external-link" href="https://www.steamdt.com/en/cs2/${encodeURIComponent(r.name)}?tab=trend&type=charts" target="_blank" rel="noopener" title="Открыть предмет на SteamDT в рублях">SteamDT ₽ ↗</a></td>
       <td><span class="tag">${r.category || '—'}</span></td>
       <td><span class="tag">${r.rarity || '—'}</span></td>
       <td class="num">${r.qty}</td>
@@ -269,10 +272,27 @@ document.getElementById('cat-filter').addEventListener('change', () => { refresh
 document.getElementById('rar-filter').addEventListener('change', applyFilterSort);
 const SERVER_MODE = location.protocol.startsWith('http');
 const btn = document.getElementById('refresh-btn');
+const favoritesBtn = document.getElementById('favorites-btn');
 const statusEl = document.getElementById('copy-status');
 if (SERVER_MODE) btn.textContent = 'Пересобрать по ссылке';
 
 function showStatus(text) { statusEl.style.display = 'block'; statusEl.textContent = text; }
+
+favoritesBtn.addEventListener('click', async () => {
+  const url = document.getElementById('list-url').value.trim() || 'https://lis-skins.com/ru/market/cs2/?user_list_id=01kvbgbzhn0acjzykwfagmc96y';
+  window.open(url, '_blank', 'noopener');
+  const prompt = 'Обнови избранное для сервиса сравнения по ссылке: ' + url + '\n\nОткрой список во встроенном браузере ChatGPT, дождись прохождения Cloudflare, считай все ссылки a.market-card, синхронизируй favorites.json с публичным экспортом LIS-SKINS и затем полностью пересобери таблицу. Автоматизированный Chrome для LIS-SKINS не запускай.';
+  const box = document.getElementById('prompt-box');
+  box.style.display = 'block';
+  box.value = prompt;
+  try {
+    await navigator.clipboard.writeText(prompt);
+    showStatus('Команда скопирована. Вставьте её в чат ChatGPT — список откроется во встроенном браузере и затем пересоберётся.');
+  } catch {
+    box.select();
+    showStatus('Команда подготовлена ниже. Скопируйте её и вставьте в чат ChatGPT.');
+  }
+});
 
 async function pollUntilDone() {
   while (true) {
